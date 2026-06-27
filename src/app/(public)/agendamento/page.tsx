@@ -33,9 +33,10 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SchedulePicker } from "@/components/agendamento/schedule-picker";
-import { useDB, getServicosAtivos, agendamentosApi } from "@/lib/store";
+import { submitAgendamento } from "@/app/(public)/agendamento/actions";
+import { useDB, getServicosAtivos } from "@/lib/store";
 import { resolveAgenda } from "@/lib/agenda-defaults";
-import { periodWindowForSlot } from "@/lib/agenda";
+import { periodWindowForSlot, normalizeTime } from "@/lib/agenda";
 import {
   subscribeClientPush,
   isPushSupported,
@@ -161,8 +162,9 @@ export default function AgendamentoPage() {
     }
 
     if (janelaChegada) {
+      const chegada = normalizeTime(form.horario_chegada);
       const { min, max } = janelaChegada;
-      if (form.horario_chegada < min || form.horario_chegada > max) {
+      if (chegada < min || chegada > max) {
         toast.error(
           `O horário de chegada deve ser entre ${min} e ${max} (${janelaChegada.label.toLowerCase()}).`
         );
@@ -172,32 +174,49 @@ export default function AgendamentoPage() {
 
     setLoading(true);
     try {
-      const inicioISO = new Date(form.data_hora).toISOString();
-      const novo = await agendamentosApi.create(
-        {
-          cliente_nome: form.cliente_nome.trim(),
-          telefone: form.telefone.trim(),
-          placa: form.placa.trim().toUpperCase(),
-          modelo: form.modelo.trim(),
-          servico_nome: form.servico_nome,
-          data_hora: inicioISO,
-          horario_chegada: form.horario_chegada,
-          observacoes: form.observacoes.trim() || undefined,
-          periodos: duracaoPeriodos,
-          agenda_fim: null,
-        },
-        clientPush
-      );
-      setSuccess(novo.id);
+      const inicio = new Date(form.data_hora);
+      if (Number.isNaN(inicio.getTime())) {
+        toast.error("Data do agendamento inválida. Selecione novamente.");
+        return;
+      }
+      const inicioISO = inicio.toISOString();
+      const chegada = normalizeTime(form.horario_chegada);
+
+      const res = await submitAgendamento({
+        cliente_nome: form.cliente_nome.trim(),
+        telefone: form.telefone.trim(),
+        placa: form.placa.trim().toUpperCase(),
+        modelo: form.modelo.trim(),
+        servico_nome: form.servico_nome,
+        data_hora: inicioISO,
+        horario_chegada: chegada,
+        observacoes: form.observacoes.trim() || undefined,
+        periodos: duracaoPeriodos,
+        clientPush,
+      });
+
+      if (!res.success) {
+        toast.error("Não foi possível enviar o agendamento.", {
+          description: res.error,
+        });
+        return;
+      }
+
+      setSuccess(res.id);
       setForm(EMPTY);
       toast.success("Agendamento enviado!", {
         description: "Sua solicitação está pendente de aprovação.",
       });
     } catch (err) {
       const msg =
-        err instanceof Error && err.message
+        err instanceof Error
           ? err.message
-          : "Tente novamente em instantes.";
+          : typeof err === "object" &&
+              err !== null &&
+              "message" in err &&
+              typeof (err as { message: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Tente novamente em instantes.";
       console.error("Erro ao enviar agendamento:", err);
       toast.error("Não foi possível enviar o agendamento.", {
         description: msg,

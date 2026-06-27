@@ -113,6 +113,13 @@ export function computeAgendaFim(
   return new Date(start.getTime() + 1).toISOString();
 }
 
+/** Normaliza "8:30" → "08:30" (Safari/iOS). */
+export function normalizeTime(t: string): string {
+  const parts = t.split(":");
+  if (parts.length < 2) return t;
+  return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+}
+
 /** Janela de horário permitida para chegada, conforme o período escolhido. */
 export function periodWindowForSlot(
   config: ConfiguracaoAgenda,
