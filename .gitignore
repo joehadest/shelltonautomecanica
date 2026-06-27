@@ -33,8 +33,15 @@ yarn-error.log*
 # Vercel / deploy
 .vercel
 
-# Supabase CLI local (não confundir com a pasta supabase/ do projeto)
+# Supabase CLI local
 .supabase/
+
+# Scripts SQL locais (não versionar)
+/supabase/
+
+# Docs locais para agentes de IA
+AGENTS.md
+CLAUDE.md
 
 # SO / editor
 .DS_Store
