@@ -9,6 +9,13 @@ import {
   Loader2,
   Radio,
   ArrowRight,
+  User,
+  Phone,
+  Car,
+  Wrench,
+  Clock,
+  ShieldCheck,
+  MessageSquare,
 } from "lucide-react";
 import {
   Card,
@@ -61,7 +68,6 @@ export default function AgendamentoPage() {
     if (
       !form.cliente_nome ||
       !form.telefone ||
-      !form.placa ||
       !form.modelo ||
       !form.servico_nome ||
       !form.data_hora
@@ -128,147 +134,244 @@ export default function AgendamentoPage() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
-      <div className="mb-8 text-center">
-        <span className="mb-4 inline-flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <CalendarCheck className="size-6" />
+    <section className="relative mx-auto w-full max-w-6xl 3xl:max-w-[1700px] overflow-x-clip px-4 py-12 sm:py-16">
+      <div className="pointer-events-none absolute -left-20 top-0 size-72 rounded-full bg-primary/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 size-72 rounded-full bg-primary/5 blur-[120px]" />
+
+      <div className="relative mb-10 text-center">
+        <span className="mb-4 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+          <CalendarCheck className="size-7" />
         </span>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
           Agende seu serviço
         </h1>
-        <p className="mt-3 text-muted-foreground">
+        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
           Preencha os dados abaixo. Sua solicitação será analisada e confirmada
           pela nossa equipe.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dados do agendamento</CardTitle>
-          <CardDescription>
-            Campos marcados com <span className="text-primary">*</span> são
-            obrigatórios.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="nome">
-                  Nome completo <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="nome"
-                  placeholder="Ex.: João Marcos Silva"
-                  value={form.cliente_nome}
-                  onChange={(e) => update("cliente_nome", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefone">
-                  Telefone / WhatsApp <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="telefone"
-                  placeholder="(11) 99999-0000"
-                  value={form.telefone}
-                  onChange={(e) => update("telefone", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="placa">
-                  Placa do carro <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="placa"
-                  placeholder="ABC1D23"
-                  className="uppercase"
-                  value={form.placa}
-                  onChange={(e) => update("placa", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modelo">
-                  Modelo / Marca <span className="text-primary">*</span>
-                </Label>
-                <Input
-                  id="modelo"
-                  placeholder="Ex.: Toyota Corolla 2020"
-                  value={form.modelo}
-                  onChange={(e) => update("modelo", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="servico">
-                  Serviço desejado <span className="text-primary">*</span>
-                </Label>
-                <Select
-                  id="servico"
-                  value={form.servico_nome}
-                  onChange={(e) => update("servico_nome", e.target.value)}
-                >
-                  <option value="" disabled>
-                    Selecione um serviço
-                  </option>
-                  {ativos.map((s) => (
-                    <option key={s.id} value={s.titulo}>
-                      {s.titulo === "Avaliação"
-                        ? "Avaliação — não sei qual o defeito"
-                        : s.titulo}
+      <div className="relative grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
+        {/* Formulário */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Dados do agendamento</CardTitle>
+            <CardDescription>
+              Campos marcados com <span className="text-primary">*</span> são
+              obrigatórios.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="nome">
+                    Nome completo <span className="text-primary">*</span>
+                  </Label>
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="nome"
+                      placeholder="Ex.: João Marcos Silva"
+                      className="pl-9"
+                      value={form.cliente_nome}
+                      onChange={(e) => update("cliente_nome", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="telefone">
+                    Telefone / WhatsApp <span className="text-primary">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="telefone"
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="(11) 99999-0000"
+                      className="pl-9"
+                      value={form.telefone}
+                      onChange={(e) => update("telefone", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="placa">
+                    Placa do carro{" "}
+                    <span className="text-muted-foreground">(opcional)</span>
+                  </Label>
+                  <div className="relative">
+                    <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="placa"
+                      placeholder="ABC1D23"
+                      className="pl-9 uppercase"
+                      value={form.placa}
+                      onChange={(e) => update("placa", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modelo">
+                    Modelo / Marca <span className="text-primary">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="modelo"
+                      placeholder="Ex.: Toyota Corolla 2020"
+                      className="pl-9"
+                      value={form.modelo}
+                      onChange={(e) => update("modelo", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="servico">
+                    Serviço desejado <span className="text-primary">*</span>
+                  </Label>
+                  <Select
+                    id="servico"
+                    value={form.servico_nome}
+                    onChange={(e) => update("servico_nome", e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Selecione um serviço
                     </option>
-                  ))}
-                </Select>
-                {form.servico_nome === "Avaliação" && (
-                  <p className="text-xs text-muted-foreground">
-                    Nossa equipe vai inspecionar o veículo e informar o que
-                    precisa ser feito antes de iniciar qualquer reparo.
-                  </p>
-                )}
+                    {ativos.map((s) => (
+                      <option key={s.id} value={s.titulo}>
+                        {s.titulo === "Avaliação"
+                          ? "Avaliação — não sei qual o defeito"
+                          : s.titulo}
+                      </option>
+                    ))}
+                  </Select>
+                  {form.servico_nome === "Avaliação" && (
+                    <p className="text-xs text-muted-foreground">
+                      Nossa equipe vai inspecionar o veículo e informar o que
+                      precisa ser feito antes de iniciar qualquer reparo.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="data">
+                    Data e hora pretendida{" "}
+                    <span className="text-primary">*</span>
+                  </Label>
+                  <Input
+                    id="data"
+                    type="datetime-local"
+                    value={form.data_hora}
+                    onChange={(e) => update("data_hora", e.target.value)}
+                  />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="data">
-                  Data e hora pretendida <span className="text-primary">*</span>
+                <Label htmlFor="obs" className="flex items-center gap-2">
+                  <MessageSquare className="size-4 text-muted-foreground" />
+                  Observações (opcional)
                 </Label>
-                <Input
-                  id="data"
-                  type="datetime-local"
-                  value={form.data_hora}
-                  onChange={(e) => update("data_hora", e.target.value)}
+                <Textarea
+                  id="obs"
+                  placeholder="Descreva o problema ou detalhes que ajudem nossa equipe."
+                  value={form.observacoes}
+                  onChange={(e) => update("observacoes", e.target.value)}
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="obs">Observações (opcional)</Label>
-              <Textarea
-                id="obs"
-                placeholder="Descreva o problema ou detalhes que ajudem nossa equipe."
-                value={form.observacoes}
-                onChange={(e) => update("observacoes", e.target.value)}
-              />
-            </div>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    Enviar solicitação
+                    <ArrowRight />
+                  </>
+                )}
+              </Button>
 
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  Enviar solicitação
-                  <ArrowRight />
-                </>
+              <p className="text-center text-xs text-muted-foreground">
+                Sem custo para agendar. Você só confirma após nosso retorno.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Painel lateral informativo */}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
+          <div className="rounded-xl border border-border bg-card/60 p-5">
+            <h3 className="text-sm font-semibold text-foreground">
+              Como funciona
+            </h3>
+            <ol className="mt-4 space-y-4">
+              {[
+                {
+                  icon: CalendarCheck,
+                  title: "Você envia o pedido",
+                  desc: "Preencha o formulário com os dados do veículo.",
+                },
+                {
+                  icon: ShieldCheck,
+                  title: "Nós confirmamos",
+                  desc: "Analisamos e retornamos confirmando o horário.",
+                },
+                {
+                  icon: Wrench,
+                  title: "Entra na fila",
+                  desc: "Seu carro entra no atendimento e você acompanha ao vivo.",
+                },
+              ].map((step, i) => (
+                <li key={step.title} className="flex gap-3">
+                  <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <step.icon className="size-4" />
+                    <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      {i + 1}
+                    </span>
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {step.title}
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {step.desc}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+            <div className="flex items-center gap-2 text-primary">
+              <Clock className="size-4" />
+              <p className="text-sm font-semibold">Prefere acompanhar?</p>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Veja em tempo real os veículos em atendimento na oficina.
+            </p>
+            <Link
+              href="/fila"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "mt-4 w-full"
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            >
+              <Radio className="text-primary" />
+              Ver fila ao vivo
+            </Link>
+          </div>
+        </aside>
+      </div>
     </section>
   );
 }
