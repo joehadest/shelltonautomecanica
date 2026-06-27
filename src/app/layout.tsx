@@ -32,10 +32,12 @@ export const metadata: Metadata = {
       { url: "/favicon/favicon-for-app/icon1.png", type: "image/png" },
       { url: "/favicon/favicon-for-app/icon0.svg", type: "image/svg+xml" },
     ],
+    apple: "/favicon/favicon-for-app/apple-icon.png",
   },
-  manifest: "/favicon/favicon-for-app/manifest.json",
   appleWebApp: {
+    capable: true,
     title: "Shellton",
+    statusBarStyle: "black-translucent",
   },
 };
 

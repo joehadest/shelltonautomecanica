@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { LogOut, ExternalLink, Loader2 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/admin/notifications-bell";
 import { signOut, useAuth } from "@/lib/auth";
 
 export default function DashboardLayout({
@@ -52,6 +53,7 @@ export default function DashboardLayout({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationsBell />
             <Link
               href="/"
               target="_blank"
