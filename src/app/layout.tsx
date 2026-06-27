@@ -27,6 +27,16 @@ export const metadata: Metadata = {
     "alinhamento",
     "agendamento",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon/favicon-for-app/icon1.png", type: "image/png" },
+      { url: "/favicon/favicon-for-app/icon0.svg", type: "image/svg+xml" },
+    ],
+  },
+  manifest: "/favicon/favicon-for-app/manifest.json",
+  appleWebApp: {
+    title: "Shellton",
+  },
 };
 
 export default function RootLayout({
