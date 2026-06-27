@@ -2,6 +2,7 @@ import type { ConfiguracaoAgenda } from "./types";
 
 export const DEFAULT_AGENDA: Omit<ConfiguracaoAgenda, "id" | "updated_at"> = {
   capacidade: 3,
+  entradas_por_periodo: 1,
   manha_inicio: "07:30",
   manha_fim: "11:00",
   tarde_inicio: "13:30",

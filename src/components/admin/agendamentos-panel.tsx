@@ -114,8 +114,19 @@ export function AgendamentosPanel() {
                     {a.servico_nome}
                   </p>
                   <p className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="size-4 text-primary" />
-                    {formatDateTime(a.data_hora)}
+                    <Clock className="size-4 shrink-0 text-primary" />
+                    <span>
+                      {formatDateTime(a.data_hora)}
+                      {a.horario_chegada && (
+                        <>
+                          {" "}
+                          · Deixa o carro às{" "}
+                          <strong className="text-foreground">
+                            {a.horario_chegada}
+                          </strong>
+                        </>
+                      )}
+                    </span>
                   </p>
                   {a.observacoes && (
                     <p className="rounded-md bg-secondary/50 p-2 text-xs text-muted-foreground">

@@ -34,6 +34,7 @@ const WEEKDAYS = [
 function toDraft(c: ConfiguracaoAgenda): AgendaDraft {
   return {
     capacidade: c.capacidade,
+    entradas_por_periodo: c.entradas_por_periodo,
     manha_inicio: c.manha_inicio,
     manha_fim: c.manha_fim,
     tarde_inicio: c.tarde_inicio,
@@ -46,6 +47,7 @@ function toDraft(c: ConfiguracaoAgenda): AgendaDraft {
 function sameDraft(a: AgendaDraft, b: AgendaDraft) {
   return (
     a.capacidade === b.capacidade &&
+    a.entradas_por_periodo === b.entradas_por_periodo &&
     a.manha_inicio === b.manha_inicio &&
     a.manha_fim === b.manha_fim &&
     a.tarde_inicio === b.tarde_inicio &&
@@ -121,29 +123,51 @@ export function AgendaPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Car className="size-4 text-primary" />
-            Vagas simultâneas
+            Capacidade da oficina
           </CardTitle>
           <CardDescription>
-            Quantos veículos a oficina atende ao mesmo tempo.
+            Os dois limites que controlam quantos carros entram e ficam.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="sm:max-w-xs space-y-2">
-            <Label htmlFor="capacidade">Veículos ao mesmo tempo</Label>
-            <Input
-              id="capacidade"
-              type="number"
-              min={1}
-              max={20}
-              value={draft.capacidade}
-              onChange={(e) =>
-                update("capacidade", parseInt(e.target.value, 10) || 0)
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              Quantas vagas existem por período (manhã/tarde). Cada serviço
-              ocupa uma vaga durante toda a sua duração.
-            </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="entradas">Entradas por período</Label>
+              <Input
+                id="entradas"
+                type="number"
+                min={1}
+                max={10}
+                value={draft.entradas_por_periodo}
+                onChange={(e) =>
+                  update(
+                    "entradas_por_periodo",
+                    parseInt(e.target.value, 10) || 0
+                  )
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Quantos carros novos podem entrar por manhã/tarde (o gargalo do
+                elevador). Normalmente 1.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="capacidade">Vagas no pátio</Label>
+              <Input
+                id="capacidade"
+                type="number"
+                min={1}
+                max={20}
+                value={draft.capacidade}
+                onChange={(e) =>
+                  update("capacidade", parseInt(e.target.value, 10) || 0)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Carros que podem ficar ao mesmo tempo na oficina. A vaga só
+                libera quando o serviço é marcado como pronto na fila.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

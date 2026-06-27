@@ -113,6 +113,47 @@ export function computeAgendaFim(
   return new Date(start.getTime() + 1).toISOString();
 }
 
+/** Janela de horário permitida para chegada, conforme o período escolhido. */
+export function periodWindowForSlot(
+  config: ConfiguracaoAgenda,
+  periodISO: string
+): { min: string; max: string; label: string } | null {
+  if (!periodISO) return null;
+  const d = new Date(periodISO);
+  const slot = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (slot === config.manha_inicio) {
+    return {
+      min: config.manha_inicio,
+      max: config.manha_fim,
+      label: "Manhã",
+    };
+  }
+  if (slot === config.tarde_inicio) {
+    return {
+      min: config.tarde_inicio,
+      max: config.tarde_fim,
+      label: "Tarde",
+    };
+  }
+  const [mh] = parseTime(config.manha_inicio);
+  if (d.getHours() * 60 + d.getMinutes() < mh * 60 + 60) {
+    return {
+      min: config.manha_inicio,
+      max: config.manha_fim,
+      label: "Manhã",
+    };
+  }
+  return {
+    min: config.tarde_inicio,
+    max: config.tarde_fim,
+    label: "Tarde",
+  };
+}
+
+function pad(n: number) {
+  return n.toString().padStart(2, "0");
+}
+
 /** Quantos veículos ocupam uma vaga no período informado. */
 export function occupancyAt(
   periodISO: string,
@@ -126,23 +167,26 @@ export function occupancyAt(
 }
 
 /**
- * Vagas livres ao longo de todo o serviço caso ele comece em `startDate`.
- * Retorna 0 se não couber (qualquer período do intervalo lotado).
+ * Vagas realmente disponíveis para começar um serviço no período `startISO`.
+ * Combina entradas (elevador) e vagas no pátio naquele momento.
+ * A ocupação do pátio só termina quando o admin marca o carro como pronto.
  */
-export function spanRemaining(
+export function startAvailability(
   config: ConfiguracaoAgenda,
-  startDate: Date,
-  durationPeriods: number,
-  bookings: BookingInterval[],
-  capacity: number
+  startISO: string,
+  patioBookings: BookingInterval[],
+  entryStarts: string[]
 ): number {
-  const d = Math.max(1, durationPeriods);
-  const span = enumeratePeriods(config, startDate, d);
-  if (span.length < d) return 0;
-  let minRem = capacity;
-  for (const p of span) {
-    minRem = Math.min(minRem, capacity - occupancyAt(p.iso, bookings));
-    if (minRem <= 0) return 0;
-  }
-  return Math.max(0, minRem);
+  const entradasUsadas = entryStarts.filter((s) => s === startISO).length;
+  const entradasLivres =
+    Math.max(1, config.entradas_por_periodo) - entradasUsadas;
+  if (entradasLivres <= 0) return 0;
+  const patioLivre =
+    config.capacidade - occupancyAt(startISO, patioBookings);
+  return Math.max(0, Math.min(entradasLivres, patioLivre));
+}
+
+/** Libera a vaga no pátio (fim exclusivo = agora). */
+export function computeReleaseAt(fromDate: Date = new Date()): string {
+  return fromDate.toISOString();
 }

@@ -35,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SchedulePicker } from "@/components/agendamento/schedule-picker";
 import { useDB, getServicosAtivos, agendamentosApi } from "@/lib/store";
 import { resolveAgenda } from "@/lib/agenda-defaults";
-import { computeAgendaFim } from "@/lib/agenda";
+import { periodWindowForSlot } from "@/lib/agenda";
 import {
   subscribeClientPush,
   isPushSupported,
@@ -52,6 +52,7 @@ interface FormState {
   modelo: string;
   servico_nome: string;
   data_hora: string;
+  horario_chegada: string;
   observacoes: string;
 }
 
@@ -62,12 +63,14 @@ const EMPTY: FormState = {
   modelo: "",
   servico_nome: "",
   data_hora: "",
+  horario_chegada: "",
   observacoes: "",
 };
 
 export default function AgendamentoPage() {
   const { servicos, agendaConfig } = useDB();
   const ativos = getServicosAtivos(servicos);
+  const config = resolveAgenda(agendaConfig);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -87,8 +90,21 @@ export default function AgendamentoPage() {
   }
 
   function selecionarServico(titulo: string) {
-    // Trocar de serviço muda a duração/disponibilidade — limpa o horário.
-    setForm((f) => ({ ...f, servico_nome: titulo, data_hora: "" }));
+    setForm((f) => ({
+      ...f,
+      servico_nome: titulo,
+      data_hora: "",
+      horario_chegada: "",
+    }));
+  }
+
+  function selecionarPeriodo(iso: string) {
+    const janela = periodWindowForSlot(config, iso);
+    setForm((f) => ({
+      ...f,
+      data_hora: iso,
+      horario_chegada: janela?.min ?? "",
+    }));
   }
 
   async function handleEnablePush() {
@@ -126,6 +142,10 @@ export default function AgendamentoPage() {
     }
   }
 
+  const janelaChegada = form.data_hora
+    ? periodWindowForSlot(config, form.data_hora)
+    : null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (
@@ -133,16 +153,26 @@ export default function AgendamentoPage() {
       !form.telefone ||
       !form.modelo ||
       !form.servico_nome ||
-      !form.data_hora
+      !form.data_hora ||
+      !form.horario_chegada
     ) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
 
+    if (janelaChegada) {
+      const { min, max } = janelaChegada;
+      if (form.horario_chegada < min || form.horario_chegada > max) {
+        toast.error(
+          `O horário de chegada deve ser entre ${min} e ${max} (${janelaChegada.label.toLowerCase()}).`
+        );
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const inicioISO = new Date(form.data_hora).toISOString();
-      const config = resolveAgenda(agendaConfig);
       const novo = await agendamentosApi.create(
         {
           cliente_nome: form.cliente_nome.trim(),
@@ -151,9 +181,10 @@ export default function AgendamentoPage() {
           modelo: form.modelo.trim(),
           servico_nome: form.servico_nome,
           data_hora: inicioISO,
+          horario_chegada: form.horario_chegada,
           observacoes: form.observacoes.trim() || undefined,
           periodos: duracaoPeriodos,
-          agenda_fim: computeAgendaFim(config, inicioISO, duracaoPeriodos),
+          agenda_fim: null,
         },
         clientPush
       );
@@ -162,8 +193,15 @@ export default function AgendamentoPage() {
       toast.success("Agendamento enviado!", {
         description: "Sua solicitação está pendente de aprovação.",
       });
-    } catch {
-      toast.error("Não foi possível enviar o agendamento. Tente novamente.");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Tente novamente em instantes.";
+      console.error("Erro ao enviar agendamento:", err);
+      toast.error("Não foi possível enviar o agendamento.", {
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -331,16 +369,47 @@ export default function AgendamentoPage() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <CalendarCheck className="size-4 text-primary" />
-                  Escolha o dia e horário{" "}
+                  Escolha o dia e o período{" "}
                   <span className="text-primary">*</span>
                 </Label>
                 <SchedulePicker
                   value={form.data_hora}
-                  onChange={(iso) => update("data_hora", iso)}
+                  onChange={selecionarPeriodo}
                   durationPeriods={duracaoPeriodos}
                   serviceSelected={!!form.servico_nome}
                 />
               </div>
+
+              {janelaChegada && (
+                <div className="rounded-xl border border-border bg-card/40 p-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="horario_chegada"
+                      className="flex items-center gap-2"
+                    >
+                      <Clock className="size-4 text-primary" />
+                      Qual horário você vai deixar o carro?{" "}
+                      <span className="text-primary">*</span>
+                    </Label>
+                    <Input
+                      id="horario_chegada"
+                      type="time"
+                      min={janelaChegada.min}
+                      max={janelaChegada.max}
+                      value={form.horario_chegada}
+                      onChange={(e) =>
+                        update("horario_chegada", e.target.value)
+                      }
+                      className="max-w-xs"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Período da {janelaChegada.label.toLowerCase()}: entre{" "}
+                      {janelaChegada.min} e {janelaChegada.max}.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="obs" className="flex items-center gap-2">

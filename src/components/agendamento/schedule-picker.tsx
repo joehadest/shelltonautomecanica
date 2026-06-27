@@ -10,12 +10,12 @@ import {
   Clock,
   Info,
 } from "lucide-react";
-import { getBookings } from "@/app/(public)/agendamento/availability";
+import { getAvailabilityData } from "@/app/(public)/agendamento/availability";
 import { useDB } from "@/lib/store";
 import { resolveAgenda } from "@/lib/agenda-defaults";
 import {
   enumeratePeriods,
-  spanRemaining,
+  startAvailability,
   duracaoLabel,
   type BookingInterval,
   type PeriodSlot,
@@ -72,9 +72,9 @@ export function SchedulePicker({
 }: SchedulePickerProps) {
   const { agendaConfig } = useDB();
   const config = useMemo(() => resolveAgenda(agendaConfig), [agendaConfig]);
-  const capacity = config.capacidade;
 
-  const [bookings, setBookings] = useState<BookingInterval[]>([]);
+  const [patioBookings, setPatioBookings] = useState<BookingInterval[]>([]);
+  const [entryStarts, setEntryStarts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -131,9 +131,12 @@ export function SchedulePicker({
 
     let active = true;
     setLoading(true);
-    getBookings(from.toISOString(), to.toISOString())
+    getAvailabilityData(from.toISOString(), to.toISOString())
       .then((res) => {
-        if (active) setBookings(res);
+        if (active) {
+          setPatioBookings(res.patio);
+          setEntryStarts(res.entryStarts);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -146,7 +149,7 @@ export function SchedulePicker({
   const dur = Math.max(1, durationPeriods);
 
   function periodRemaining(p: PeriodSlot) {
-    return spanRemaining(config, p.date, dur, bookings, capacity);
+    return startAvailability(config, p.iso, patioBookings, entryStarts);
   }
 
   function dayHasVaga(day: DayGroup) {
@@ -189,10 +192,11 @@ export function SchedulePicker({
       <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
         <Clock className="mt-0.5 size-3.5 shrink-0 text-primary" />
         <span>
-          Este serviço ocupa a vaga por{" "}
+          Tempo estimado:{" "}
           <strong className="text-foreground">{duracaoLabel(dur)}</strong>.
-          Escolha quando deixar o veículo — a vaga fica reservada até a
-          conclusão.
+          A vaga no pátio fica reservada até o serviço ser concluído e
+          marcado como <strong className="text-foreground">pronto</strong> pela
+          oficina.
         </span>
       </div>
 
@@ -315,8 +319,7 @@ export function SchedulePicker({
       )}
 
       <p className="text-center text-[11px] text-muted-foreground/80">
-        Atende até {capacity} veículo{capacity > 1 ? "s" : ""} por período ·
-        horários definidos pela oficina.
+        Vagas limitadas · horários e capacidade definidos pela oficina.
       </p>
     </div>
   );

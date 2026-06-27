@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { computeReleaseAt } from "@/lib/agenda";
 import {
   notifyNewAgendamento,
   notifyClientAgendamentoStatus,
@@ -22,6 +23,17 @@ import type {
 } from "./types";
 
 const supabase = createClient();
+
+/** Libera a vaga no pátio quando o serviço é marcado como pronto. */
+async function releaseAgendaVaga(agendamentoId: string) {
+  const { error } = await supabase
+    .from("agendamentos")
+    .update({ agenda_fim: computeReleaseAt() })
+    .eq("id", agendamentoId);
+  if (error && !isMissingColumnError(error)) {
+    console.error("releaseAgendaVaga:", error.message);
+  }
+}
 
 interface DBState {
   servicos: Servico[];
@@ -311,23 +323,28 @@ export const agendamentosApi = {
         .select()
         .single();
 
-      // Fallback: colunas opcionais ainda não migradas no banco.
-      if (error && isMissingColumnError(error)) {
+      // Fallback: se falhar (ex.: colunas opcionais ainda não migradas no
+      // banco), tenta de novo apenas com os campos essenciais para não
+      // bloquear o cliente.
+      if (error) {
         const fallback = { ...payload };
         for (const col of [
           "periodos",
           "agenda_fim",
+          "horario_chegada",
           "push_endpoint",
           "push_p256dh",
           "push_auth",
         ]) {
           delete fallback[col];
         }
-        ({ data: row, error } = await supabase
+        const retry = await supabase
           .from("agendamentos")
           .insert(fallback)
           .select()
-          .single());
+          .single();
+        row = retry.data;
+        error = retry.error;
       }
 
       if (error) throw error;
@@ -400,6 +417,9 @@ export const filaApi = {
         .update({ status })
         .eq("id", id);
       if (error) throw error;
+      if (item?.agendamento_id && status === "pronto") {
+        await releaseAgendaVaga(item.agendamento_id);
+      }
       // Avisa o cliente sobre a mudança (em manutenção / pronto).
       if (item?.agendamento_id) {
         void notifyClientFilaStatus(item.agendamento_id, status).catch(() => {});
@@ -443,8 +463,8 @@ export const filaApi = {
         })
         .eq("id", id);
       if (error) throw error;
-      // Avisa o cliente que o carro está pronto para retirada.
       if (item?.agendamento_id) {
+        await releaseAgendaVaga(item.agendamento_id);
         void notifyClientFilaStatus(item.agendamento_id, "pronto").catch(() => {});
       }
     });

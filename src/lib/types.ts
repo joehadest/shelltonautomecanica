@@ -20,8 +20,10 @@ export interface EstatisticaSite {
 
 export interface ConfiguracaoAgenda {
   id: string;
-  /** Veículos atendidos ao mesmo tempo (vagas por período). */
+  /** Vagas no pátio: carros que podem ficar ao mesmo tempo na oficina. */
   capacidade: number;
+  /** Entradas por período (gargalo do elevador): novos carros por manhã/tarde. */
+  entradas_por_periodo: number;
   manha_inicio: string; // "07:30"
   manha_fim: string; // "11:00"
   tarde_inicio: string; // "13:30"
@@ -65,7 +67,9 @@ export interface Agendamento {
   placa: string;
   modelo: string;
   servico_nome: string;
-  data_hora: string; // ISO
+  data_hora: string; // ISO — início do período reservado (manhã/tarde)
+  /** Horário informado pelo cliente para deixar o carro (ex.: "08:30"). */
+  horario_chegada?: string | null;
   observacoes?: string;
   status: AgendamentoStatus;
   created_at: string;
