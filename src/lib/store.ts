@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { notifyNewAgendamento } from "@/app/admin/push-actions";
 import type {
   Agendamento,
   AgendamentoStatus,
@@ -250,7 +251,10 @@ export const agendamentosApi = {
         .select()
         .single();
       if (error) throw error;
-      return row as Agendamento;
+      const created = row as Agendamento;
+      // Dispara o push para os admins (sem bloquear o cliente).
+      void notifyNewAgendamento(created.id).catch(() => {});
+      return created;
     });
   },
   async setStatus(id: string, status: AgendamentoStatus) {
