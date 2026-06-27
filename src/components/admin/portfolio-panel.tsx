@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDB, servicosApi } from "@/lib/store";
 import { SERVICE_ICON_OPTIONS, getServiceIcon } from "@/lib/icons";
+import { DURACAO_OPCOES, duracaoLabel } from "@/lib/agenda";
 import type { Servico } from "@/lib/types";
 
 interface FormState {
@@ -27,6 +28,7 @@ interface FormState {
   icone: string;
   ordem: number;
   ativo: boolean;
+  duracao_periodos: number;
 }
 
 const EMPTY: FormState = {
@@ -35,6 +37,7 @@ const EMPTY: FormState = {
   icone: "Wrench",
   ordem: 1,
   ativo: true,
+  duracao_periodos: 2,
 };
 
 export function PortfolioPanel() {
@@ -63,6 +66,7 @@ export function PortfolioPanel() {
       icone: s.icone,
       ordem: s.ordem,
       ativo: s.ativo,
+      duracao_periodos: s.duracao_periodos ?? 2,
     });
     setOpen(true);
   }
@@ -140,8 +144,9 @@ export function PortfolioPanel() {
               <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
                 {s.descricao}
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Ordem: {s.ordem}
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5" />
+                {duracaoLabel(s.duracao_periodos ?? 2)} · Ordem {s.ordem}
               </p>
               <div className="mt-4 flex items-center gap-1.5">
                 <Button
@@ -244,6 +249,27 @@ export function PortfolioPanel() {
                   }
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="duracao">Duração do serviço</Label>
+              <Select
+                id="duracao"
+                value={String(form.duracao_periodos)}
+                onChange={(e) =>
+                  update("duracao_periodos", Number(e.target.value))
+                }
+              >
+                {DURACAO_OPCOES.map((o) => (
+                  <option key={o.periodos} value={o.periodos}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Por quanto tempo a vaga fica reservada para este serviço
+                (manhã/tarde contam como meio período).
+              </p>
             </div>
 
             <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">

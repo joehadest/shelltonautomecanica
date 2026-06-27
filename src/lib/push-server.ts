@@ -32,6 +32,36 @@ interface SubscriptionRow {
   auth: string;
 }
 
+export interface RawSubscription {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+/**
+ * Envia para uma única inscrição (ex.: o cliente de um agendamento).
+ * Retorna false silenciosamente se a inscrição não existir/expirar.
+ */
+export async function sendPushToSubscription(
+  sub: RawSubscription,
+  payload: PushPayload
+): Promise<boolean> {
+  ensureConfigured();
+  try {
+    await webpush.sendNotification(
+      {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      },
+      JSON.stringify(payload)
+    );
+    return true;
+  } catch (err) {
+    console.error("Erro ao enviar push (cliente):", err);
+    return false;
+  }
+}
+
 /**
  * Envia uma notificação para todas as inscrições salvas.
  * Remove automaticamente inscrições expiradas (404/410).

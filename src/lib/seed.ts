@@ -49,6 +49,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "ClipboardCheck",
     ordem: 0,
     ativo: true,
+    duracao_periodos: 1,
     created_at: new Date().toISOString(),
   },
   {
@@ -59,6 +60,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "Droplet",
     ordem: 1,
     ativo: true,
+    duracao_periodos: 1,
     created_at: new Date().toISOString(),
   },
   {
@@ -69,6 +71,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "Gauge",
     ordem: 2,
     ativo: true,
+    duracao_periodos: 1,
     created_at: new Date().toISOString(),
   },
   {
@@ -79,6 +82,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "Cog",
     ordem: 3,
     ativo: true,
+    duracao_periodos: 10,
     created_at: new Date().toISOString(),
   },
   {
@@ -89,6 +93,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "Zap",
     ordem: 4,
     ativo: true,
+    duracao_periodos: 2,
     created_at: new Date().toISOString(),
   },
   {
@@ -99,6 +104,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "Disc3",
     ordem: 5,
     ativo: true,
+    duracao_periodos: 1,
     created_at: new Date().toISOString(),
   },
   {
@@ -109,6 +115,7 @@ export const SEED_SERVICOS: Servico[] = [
     icone: "CarFront",
     ordem: 6,
     ativo: true,
+    duracao_periodos: 2,
     created_at: new Date().toISOString(),
   },
 ];

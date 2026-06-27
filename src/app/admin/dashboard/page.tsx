@@ -9,6 +9,7 @@ import {
   BarChart3,
   PanelBottom,
   Settings,
+  CalendarCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDB } from "@/lib/store";
@@ -19,11 +20,13 @@ import { PortfolioPanel } from "@/components/admin/portfolio-panel";
 import { EstatisticasPanel } from "@/components/admin/estatisticas-panel";
 import { FooterPanel } from "@/components/admin/footer-panel";
 import { ConfigPanel } from "@/components/admin/config-panel";
+import { AgendaPanel } from "@/components/admin/agenda-panel";
 
 type Tab =
   | "visao"
   | "agendamentos"
   | "fila"
+  | "agenda"
   | "portfolio"
   | "estatisticas"
   | "footer"
@@ -33,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: typeof CalendarClock }[] = [
   { id: "visao", label: "Visão geral", icon: LayoutDashboard },
   { id: "agendamentos", label: "Agendamentos", icon: CalendarClock },
   { id: "fila", label: "Fila virtual", icon: ListOrdered },
+  { id: "agenda", label: "Agenda e vagas", icon: CalendarCog },
   { id: "portfolio", label: "Portfólio", icon: LayoutGrid },
   { id: "estatisticas", label: "Números do site", icon: BarChart3 },
   { id: "footer", label: "Rodapé", icon: PanelBottom },
@@ -97,6 +101,7 @@ export default function DashboardPage() {
         {tab === "visao" && <OverviewPanel />}
         {tab === "agendamentos" && <AgendamentosPanel />}
         {tab === "fila" && <FilaPanel />}
+        {tab === "agenda" && <AgendaPanel />}
         {tab === "portfolio" && <PortfolioPanel />}
         {tab === "estatisticas" && <EstatisticasPanel />}
         {tab === "footer" && <FooterPanel />}

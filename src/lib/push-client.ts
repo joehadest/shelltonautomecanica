@@ -103,6 +103,55 @@ export async function enablePush(): Promise<
   return { ok: true };
 }
 
+export interface ClientPushSubscription {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+/**
+ * Inscreve o DISPOSITIVO DO CLIENTE para push e devolve a inscrição
+ * serializada — sem salvar na tabela de admins. A inscrição é guardada
+ * junto ao agendamento dele, para avisos personalizados do serviço.
+ */
+export async function subscribeClientPush(): Promise<
+  | { ok: true; subscription: ClientPushSubscription }
+  | { ok: false; reason: string }
+> {
+  if (!isPushSupported()) {
+    return { ok: false, reason: "Este aparelho não suporta notificações." };
+  }
+  if (!VAPID_PUBLIC_KEY) {
+    return { ok: false, reason: "Notificações indisponíveis no momento." };
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    return { ok: false, reason: "Permissão de notificação negada." };
+  }
+
+  await registerServiceWorker();
+  const reg = await navigator.serviceWorker.ready;
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+
+  const s = serialize(sub);
+  return {
+    ok: true,
+    subscription: {
+      endpoint: s.endpoint,
+      p256dh: s.keys.p256dh,
+      auth: s.keys.auth,
+    },
+  };
+}
+
 export async function disablePush(): Promise<void> {
   const sub = await getCurrentSubscription();
   if (sub) {

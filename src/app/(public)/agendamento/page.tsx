@@ -16,6 +16,9 @@ import {
   Clock,
   ShieldCheck,
   MessageSquare,
+  Bell,
+  BellRing,
+  Smartphone,
 } from "lucide-react";
 import {
   Card,
@@ -29,7 +32,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SchedulePicker } from "@/components/agendamento/schedule-picker";
 import { useDB, getServicosAtivos, agendamentosApi } from "@/lib/store";
+import { resolveAgenda } from "@/lib/agenda-defaults";
+import { computeAgendaFim } from "@/lib/agenda";
+import {
+  subscribeClientPush,
+  isPushSupported,
+  isIOS,
+  isStandalone,
+  type ClientPushSubscription,
+} from "@/lib/push-client";
 import { cn } from "@/lib/utils";
 
 interface FormState {
@@ -53,14 +66,64 @@ const EMPTY: FormState = {
 };
 
 export default function AgendamentoPage() {
-  const { servicos } = useDB();
+  const { servicos, agendaConfig } = useDB();
   const ativos = getServicosAtivos(servicos);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [clientPush, setClientPush] = useState<ClientPushSubscription | null>(
+    null
+  );
+  const [pushStatus, setPushStatus] = useState<
+    "idle" | "enabling" | "enabled" | "error"
+  >("idle");
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+
+  const servicoSelecionado = ativos.find((s) => s.titulo === form.servico_nome);
+  const duracaoPeriodos = servicoSelecionado?.duracao_periodos ?? 1;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function selecionarServico(titulo: string) {
+    // Trocar de serviço muda a duração/disponibilidade — limpa o horário.
+    setForm((f) => ({ ...f, servico_nome: titulo, data_hora: "" }));
+  }
+
+  async function handleEnablePush() {
+    // No iOS o push só funciona com o site instalado na tela inicial.
+    if (isIOS() && !isStandalone()) {
+      setPushStatus("error");
+      setPushMsg(
+        "No iPhone, toque em Compartilhar → Adicionar à Tela de Início e abra por lá para ativar os avisos."
+      );
+      return;
+    }
+    if (!isPushSupported()) {
+      setPushStatus("error");
+      setPushMsg("Seu aparelho não suporta notificações neste navegador.");
+      return;
+    }
+
+    setPushStatus("enabling");
+    setPushMsg(null);
+    try {
+      const res = await subscribeClientPush();
+      if (res.ok) {
+        setClientPush(res.subscription);
+        setPushStatus("enabled");
+        toast.success("Notificações ativadas!", {
+          description: "Você será avisado sobre o andamento do seu serviço.",
+        });
+      } else {
+        setPushStatus("error");
+        setPushMsg(res.reason);
+      }
+    } catch {
+      setPushStatus("error");
+      setPushMsg("Não foi possível ativar as notificações.");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -78,15 +141,22 @@ export default function AgendamentoPage() {
 
     setLoading(true);
     try {
-      const novo = await agendamentosApi.create({
-        cliente_nome: form.cliente_nome.trim(),
-        telefone: form.telefone.trim(),
-        placa: form.placa.trim().toUpperCase(),
-        modelo: form.modelo.trim(),
-        servico_nome: form.servico_nome,
-        data_hora: new Date(form.data_hora).toISOString(),
-        observacoes: form.observacoes.trim() || undefined,
-      });
+      const inicioISO = new Date(form.data_hora).toISOString();
+      const config = resolveAgenda(agendaConfig);
+      const novo = await agendamentosApi.create(
+        {
+          cliente_nome: form.cliente_nome.trim(),
+          telefone: form.telefone.trim(),
+          placa: form.placa.trim().toUpperCase(),
+          modelo: form.modelo.trim(),
+          servico_nome: form.servico_nome,
+          data_hora: inicioISO,
+          observacoes: form.observacoes.trim() || undefined,
+          periodos: duracaoPeriodos,
+          agenda_fim: computeAgendaFim(config, inicioISO, duracaoPeriodos),
+        },
+        clientPush
+      );
       setSuccess(novo.id);
       setForm(EMPTY);
       toast.success("Agendamento enviado!", {
@@ -236,7 +306,7 @@ export default function AgendamentoPage() {
                   <Select
                     id="servico"
                     value={form.servico_nome}
-                    onChange={(e) => update("servico_nome", e.target.value)}
+                    onChange={(e) => selecionarServico(e.target.value)}
                   >
                     <option value="" disabled>
                       Selecione um serviço
@@ -256,18 +326,20 @@ export default function AgendamentoPage() {
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="data">
-                    Data e hora pretendida{" "}
-                    <span className="text-primary">*</span>
-                  </Label>
-                  <Input
-                    id="data"
-                    type="datetime-local"
-                    value={form.data_hora}
-                    onChange={(e) => update("data_hora", e.target.value)}
-                  />
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarCheck className="size-4 text-primary" />
+                  Escolha o dia e horário{" "}
+                  <span className="text-primary">*</span>
+                </Label>
+                <SchedulePicker
+                  value={form.data_hora}
+                  onChange={(iso) => update("data_hora", iso)}
+                  durationPeriods={duracaoPeriodos}
+                  serviceSelected={!!form.servico_nome}
+                />
               </div>
 
               <div className="space-y-2">
@@ -281,6 +353,75 @@ export default function AgendamentoPage() {
                   value={form.observacoes}
                   onChange={(e) => update("observacoes", e.target.value)}
                 />
+              </div>
+
+              {/* Ativar notificações do serviço */}
+              <div
+                className={cn(
+                  "rounded-xl border p-4 transition-colors",
+                  pushStatus === "enabled"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    : "border-primary/25 bg-primary/5"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                      pushStatus === "enabled"
+                        ? "bg-emerald-500/15 text-emerald-500"
+                        : "bg-primary/15 text-primary"
+                    )}
+                  >
+                    {pushStatus === "enabled" ? (
+                      <BellRing className="size-5" />
+                    ) : (
+                      <Bell className="size-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      {pushStatus === "enabled"
+                        ? "Notificações ativadas"
+                        : "Receba avisos no seu celular"}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      {pushStatus === "enabled"
+                        ? "Você será avisado quando o pedido for aceito e a cada atualização do serviço."
+                        : "Ative para saber na hora quando seu pedido for aceito e quando o carro estiver pronto."}
+                    </p>
+
+                    {pushStatus !== "enabled" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={handleEnablePush}
+                        disabled={pushStatus === "enabling"}
+                      >
+                        {pushStatus === "enabling" ? (
+                          <>
+                            <Loader2 className="animate-spin" />
+                            Ativando...
+                          </>
+                        ) : (
+                          <>
+                            <Bell />
+                            Ativar notificações
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {pushMsg && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-500">
+                        <Smartphone className="mt-0.5 size-3.5 shrink-0" />
+                        <span>{pushMsg}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <Button

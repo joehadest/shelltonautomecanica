@@ -3,10 +3,16 @@
 import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { notifyNewAgendamento } from "@/app/admin/push-actions";
+import {
+  notifyNewAgendamento,
+  notifyClientAgendamentoStatus,
+  notifyClientFilaStatus,
+} from "@/app/admin/push-actions";
+import type { ClientPushSubscription } from "@/lib/push-client";
 import type {
   Agendamento,
   AgendamentoStatus,
+  ConfiguracaoAgenda,
   EstatisticaGrupo,
   EstatisticaSite,
   FilaItem,
@@ -23,6 +29,7 @@ interface DBState {
   fila: FilaItem[];
   estatisticas: EstatisticaSite[];
   footer: FooterConfig | null;
+  agendaConfig: ConfiguracaoAgenda | null;
 }
 
 const EMPTY: DBState = {
@@ -31,6 +38,7 @@ const EMPTY: DBState = {
   fila: [],
   estatisticas: [],
   footer: null,
+  agendaConfig: null,
 };
 
 let state: DBState = EMPTY;
@@ -56,6 +64,16 @@ function isMissingTableError(error: { message?: string } | null): boolean {
   );
 }
 
+/** Coluna ainda não criada no Supabase (migração pendente). */
+function isMissingColumnError(error: { message?: string } | null): boolean {
+  const msg = error?.message ?? "";
+  return (
+    msg.includes("Could not find the") ||
+    msg.includes("column") ||
+    msg.includes("schema cache")
+  );
+}
+
 function logQueryError(label: string, error: { message?: string } | null) {
   if (!error || isMissingTableError(error)) return;
   console.error(`${label}:`, error.message);
@@ -67,19 +85,26 @@ async function fetchAll() {
   } = await supabase.auth.getSession();
   const isAuth = !!session;
 
-  const [servicosRes, filaRes, estatisticasRes, footerRes, agendamentosRes] =
-    await Promise.all([
-      supabase.from("servicos").select("*").order("ordem"),
-      supabase.from("fila_usuarios").select("*").order("posicao"),
-      supabase.from("estatisticas_site").select("*").order("ordem"),
-      supabase.from("configuracao_footer").select("*").limit(1).maybeSingle(),
-      isAuth
-        ? supabase
-            .from("agendamentos")
-            .select("*")
-            .order("created_at", { ascending: false })
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  const [
+    servicosRes,
+    filaRes,
+    estatisticasRes,
+    footerRes,
+    agendamentosRes,
+    agendaRes,
+  ] = await Promise.all([
+    supabase.from("servicos").select("*").order("ordem"),
+    supabase.from("fila_usuarios").select("*").order("posicao"),
+    supabase.from("estatisticas_site").select("*").order("ordem"),
+    supabase.from("configuracao_footer").select("*").limit(1).maybeSingle(),
+    isAuth
+      ? supabase
+          .from("agendamentos")
+          .select("*")
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    supabase.from("configuracao_agenda").select("*").limit(1).maybeSingle(),
+  ]);
 
   if (servicosRes.error) logQueryError("servicos", servicosRes.error);
   if (filaRes.error) logQueryError("fila", filaRes.error);
@@ -100,6 +125,8 @@ async function fetchAll() {
   }
   if (agendamentosRes.error)
     logQueryError("agendamentos", agendamentosRes.error);
+  if (agendaRes.error && !isMissingTableError(agendaRes.error))
+    logQueryError("agenda", agendaRes.error);
 
   state = {
     servicos: (servicosRes.data as Servico[]) ?? [],
@@ -109,6 +136,9 @@ async function fetchAll() {
       ? null
       : ((footerRes.data as FooterConfig | null) ?? null),
     agendamentos: (agendamentosRes.data as Agendamento[]) ?? [],
+    agendaConfig: isMissingTableError(agendaRes.error)
+      ? null
+      : ((agendaRes.data as ConfiguracaoAgenda | null) ?? null),
   };
   loading = false;
   emitChange();
@@ -165,6 +195,11 @@ function setupRealtime() {
       { event: "*", schema: "public", table: "configuracao_footer" },
       scheduleRefresh
     )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "configuracao_agenda" },
+      scheduleRefresh
+    )
     .subscribe();
 
   supabase.auth.onAuthStateChange(() => {
@@ -212,21 +247,38 @@ export function useDBLoading(): boolean {
 export const servicosApi = {
   async create(data: Omit<Servico, "id" | "created_at">) {
     return mutate(async () => {
-      const { data: row, error } = await supabase
+      let { data: row, error } = await supabase
         .from("servicos")
         .insert(data)
         .select()
         .single();
+      if (error && isMissingColumnError(error)) {
+        const fallback: Record<string, unknown> = { ...data };
+        delete fallback.duracao_periodos;
+        ({ data: row, error } = await supabase
+          .from("servicos")
+          .insert(fallback)
+          .select()
+          .single());
+      }
       if (error) throw error;
       return row as Servico;
     });
   },
   async update(id: string, patch: Partial<Servico>) {
     return mutate(async () => {
-      const { error } = await supabase
+      let { error } = await supabase
         .from("servicos")
         .update(patch)
         .eq("id", id);
+      if (error && isMissingColumnError(error)) {
+        const fallback: Record<string, unknown> = { ...patch };
+        delete fallback.duracao_periodos;
+        ({ error } = await supabase
+          .from("servicos")
+          .update(fallback)
+          .eq("id", id));
+      }
       if (error) throw error;
     });
   },
@@ -242,14 +294,42 @@ export const servicosApi = {
 
 export const agendamentosApi = {
   async create(
-    data: Omit<Agendamento, "id" | "created_at" | "status">
+    data: Omit<Agendamento, "id" | "created_at" | "status">,
+    clientPush?: ClientPushSubscription | null
   ): Promise<Agendamento> {
     return mutate(async () => {
-      const { data: row, error } = await supabase
+      const payload: Record<string, unknown> = { ...data, status: "pendente" };
+      if (clientPush) {
+        payload.push_endpoint = clientPush.endpoint;
+        payload.push_p256dh = clientPush.p256dh;
+        payload.push_auth = clientPush.auth;
+      }
+
+      let { data: row, error } = await supabase
         .from("agendamentos")
-        .insert({ ...data, status: "pendente" })
+        .insert(payload)
         .select()
         .single();
+
+      // Fallback: colunas opcionais ainda não migradas no banco.
+      if (error && isMissingColumnError(error)) {
+        const fallback = { ...payload };
+        for (const col of [
+          "periodos",
+          "agenda_fim",
+          "push_endpoint",
+          "push_p256dh",
+          "push_auth",
+        ]) {
+          delete fallback[col];
+        }
+        ({ data: row, error } = await supabase
+          .from("agendamentos")
+          .insert(fallback)
+          .select()
+          .single());
+      }
+
       if (error) throw error;
       const created = row as Agendamento;
       // Dispara o push para os admins (sem bloquear o cliente).
@@ -264,6 +344,8 @@ export const agendamentosApi = {
         .update({ status })
         .eq("id", id);
       if (error) throw error;
+      // Avisa o cliente (aprovado/recusado).
+      void notifyClientAgendamentoStatus(id, status).catch(() => {});
     });
   },
   async aprovar(id: string) {
@@ -292,6 +374,8 @@ export const agendamentosApi = {
         arquivado: false,
       });
       if (errFila) throw errFila;
+      // Avisa o cliente que o pedido foi aprovado e entrou na fila.
+      void notifyClientAgendamentoStatus(agd.id, "aprovado").catch(() => {});
     });
   },
   async remove(id: string) {
@@ -310,11 +394,16 @@ export const agendamentosApi = {
 export const filaApi = {
   async setStatus(id: string, status: FilaStatus) {
     return mutate(async () => {
+      const item = state.fila.find((f) => f.id === id);
       const { error } = await supabase
         .from("fila_usuarios")
         .update({ status })
         .eq("id", id);
       if (error) throw error;
+      // Avisa o cliente sobre a mudança (em manutenção / pronto).
+      if (item?.agendamento_id) {
+        void notifyClientFilaStatus(item.agendamento_id, status).catch(() => {});
+      }
     });
   },
   async move(id: string, direction: "up" | "down") {
@@ -344,6 +433,7 @@ export const filaApi = {
   },
   async finalizar(id: string) {
     return mutate(async () => {
+      const item = state.fila.find((f) => f.id === id);
       const { error } = await supabase
         .from("fila_usuarios")
         .update({
@@ -353,6 +443,10 @@ export const filaApi = {
         })
         .eq("id", id);
       if (error) throw error;
+      // Avisa o cliente que o carro está pronto para retirada.
+      if (item?.agendamento_id) {
+        void notifyClientFilaStatus(item.agendamento_id, "pronto").catch(() => {});
+      }
     });
   },
   async remove(id: string) {
@@ -424,6 +518,40 @@ export const estatisticasApi = {
         .from("estatisticas_site")
         .update(patch)
         .eq("id", id);
+      if (error) throw error;
+    });
+  },
+};
+
+/* ----------------------------- Agenda ------------------------------ */
+
+export const agendaApi = {
+  async update(
+    patch: Partial<Omit<ConfiguracaoAgenda, "id" | "updated_at">>
+  ) {
+    return mutate(async () => {
+      const current = state.agendaConfig;
+      if (current) {
+        const { error } = await supabase
+          .from("configuracao_agenda")
+          .update({ ...patch, updated_at: new Date().toISOString() })
+          .eq("id", current.id);
+        if (isMissingTableError(error)) {
+          throw new Error(
+            "Execute o arquivo supabase/agenda-config.sql no SQL Editor do Supabase."
+          );
+        }
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("configuracao_agenda")
+        .insert({ ...patch });
+      if (isMissingTableError(error)) {
+        throw new Error(
+          "Execute o arquivo supabase/agenda-config.sql no SQL Editor do Supabase."
+        );
+      }
       if (error) throw error;
     });
   },

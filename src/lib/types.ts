@@ -18,6 +18,21 @@ export interface EstatisticaSite {
   ordem: number;
 }
 
+export interface ConfiguracaoAgenda {
+  id: string;
+  /** Veículos atendidos ao mesmo tempo (vagas por período). */
+  capacidade: number;
+  manha_inicio: string; // "07:30"
+  manha_fim: string; // "11:00"
+  tarde_inicio: string; // "13:30"
+  tarde_fim: string; // "17:00"
+  /** Quantas semanas à frente ficam abertas para agendar. */
+  semanas: number;
+  /** Dias da semana abertos (0=domingo ... 6=sábado). */
+  dias_semana: number[];
+  updated_at: string;
+}
+
 export interface FooterConfig {
   id: string;
   slogan: string;
@@ -38,6 +53,8 @@ export interface Servico {
   icone: string;
   ordem: number;
   ativo: boolean;
+  /** Quantos períodos (manhã/tarde) o serviço ocupa uma vaga. */
+  duracao_periodos: number;
   created_at: string;
 }
 
@@ -52,6 +69,13 @@ export interface Agendamento {
   observacoes?: string;
   status: AgendamentoStatus;
   created_at: string;
+  /** Duração reservada, em períodos, e fim (exclusivo) da ocupação da vaga. */
+  periodos?: number | null;
+  agenda_fim?: string | null;
+  /** Inscrição push do cliente (preenchida só se ele ativar avisos). */
+  push_endpoint?: string | null;
+  push_p256dh?: string | null;
+  push_auth?: string | null;
 }
 
 export interface FilaItem {
