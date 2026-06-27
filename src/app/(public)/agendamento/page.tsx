@@ -134,11 +134,13 @@ export default function AgendamentoPage() {
   }
 
   return (
-    <section className="relative mx-auto w-full max-w-6xl 3xl:max-w-[1700px] overflow-x-clip px-4 py-12 sm:py-16">
-      <div className="pointer-events-none absolute -left-20 top-0 size-72 rounded-full bg-primary/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-20 bottom-0 size-72 rounded-full bg-primary/5 blur-[120px]" />
+    <section className="relative w-full overflow-x-clip px-4 py-12 sm:py-16">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-0 top-10 size-72 -translate-x-1/3 rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute bottom-10 right-0 size-72 translate-x-1/3 rounded-full bg-primary/5 blur-[120px]" />
+      </div>
 
-      <div className="relative mb-10 text-center">
+      <div className="relative mx-auto mb-10 w-full max-w-6xl 3xl:max-w-[1700px] text-center">
         <span className="mb-4 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
           <CalendarCheck className="size-7" />
         </span>
@@ -151,7 +153,7 @@ export default function AgendamentoPage() {
         </p>
       </div>
 
-      <div className="relative grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
+      <div className="relative mx-auto grid w-full max-w-6xl 3xl:max-w-[1700px] gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
         {/* Formulário */}
         <Card className="overflow-hidden">
           <CardHeader>
