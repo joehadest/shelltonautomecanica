@@ -76,7 +76,7 @@ function FeatureWithAdvantages({
     <section
       id="diferenciais"
       className={cn(
-        "relative w-full scroll-mt-20 border-y border-border bg-card/20 py-16 lg:py-24",
+        "relative w-full scroll-mt-20 overflow-x-clip border-y border-border bg-card/20 py-16 lg:py-24",
         className
       )}
     >

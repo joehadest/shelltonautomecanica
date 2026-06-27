@@ -110,7 +110,7 @@ export function FooterTapedDesign({ config }: FooterTapedDesignProps) {
       {/* Barra inferior */}
       <div className="mt-4 flex flex-col items-start justify-between gap-4 px-2 text-sm text-muted-foreground md:flex-row md:items-center md:px-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
-          <p className="whitespace-nowrap">
+          <p className="text-balance sm:whitespace-nowrap">
             © {currentYear} Shellton Auto Mecânica. Todos os direitos reservados.
           </p>
           <p className="text-xs sm:text-sm">{config.tagline}</p>

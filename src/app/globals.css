@@ -127,6 +127,12 @@
   border-color: var(--border);
 }
 
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -169,7 +175,7 @@ body {
 /* Entrada do hero: zoom lento (ken burns) no banner de fundo */
 @keyframes shellton-hero-zoom {
   from {
-    transform: scale(1.12);
+    transform: scale(1.06);
   }
   to {
     transform: scale(1);
@@ -178,6 +184,8 @@ body {
 
 .animate-hero-zoom {
   animation: shellton-hero-zoom 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center center;
+  will-change: transform;
 }
 
 /* Entrada do hero: glows que surgem suavemente */

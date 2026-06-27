@@ -36,7 +36,7 @@ export function SiteHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full border-b transition-all duration-300",
+        "sticky top-0 z-40 w-full max-w-full overflow-x-clip border-b transition-all duration-300",
         scrolled
           ? "border-border/80 bg-background/85 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl"
           : "border-transparent bg-background/40 backdrop-blur-md"
@@ -54,9 +54,10 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="Página inicial"
-          className="group transition-transform active:scale-95"
+          className="group min-w-0 shrink transition-transform active:scale-95"
         >
-          <Logo className="[&_img]:group-hover:scale-105" />
+          <Logo withText={false} className="flex sm:hidden [&_img]:group-hover:scale-105" />
+          <Logo className="hidden sm:flex [&_img]:group-hover:scale-105" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

@@ -22,7 +22,7 @@ export function Logo({
         height={imageSize}
         className={cn(
           "shrink-0 object-contain transition-transform",
-          size === "lg" ? "size-[72px]" : "size-[112px]"
+          size === "lg" ? "size-[72px]" : "size-14"
         )}
         style={{ width: imageSize, height: imageSize }}
         priority={size === "lg"}

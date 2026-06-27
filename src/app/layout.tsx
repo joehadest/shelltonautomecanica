@@ -49,7 +49,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full max-w-full overflow-x-clip flex flex-col bg-background text-foreground">
         {children}
         <Toaster
           position="top-right"

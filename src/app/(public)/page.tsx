@@ -158,7 +158,7 @@ export default function HomePage() {
           </div>
 
           {/* Painel visual */}
-          <div className="relative">
+          <div className="relative overflow-hidden">
             <div className="absolute -right-6 -top-6 size-40 rounded-full bg-primary/15 blur-[90px]" />
             <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-black p-7 shadow-2xl sm:p-9">
               <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-primary/10 blur-[80px]" />
