@@ -1,5 +1,5 @@
 /* Service Worker — Shellton Auto Mecânica
- * Recebe notificações push e abre o painel ao clicar.
+ * Recebe notificações push e abre a página indicada ao clicar.
  */
 
 self.addEventListener("push", function (event) {
@@ -20,7 +20,7 @@ self.addEventListener("push", function (event) {
     renotify: true,
     requireInteraction: true,
     data: {
-      url: data.url || "/admin/dashboard",
+      url: data.url || "/",
     },
   };
 
@@ -30,8 +30,7 @@ self.addEventListener("push", function (event) {
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
   const targetUrl =
-    (event.notification.data && event.notification.data.url) ||
-    "/admin/dashboard";
+    (event.notification.data && event.notification.data.url) || "/";
 
   event.waitUntil(
     clients

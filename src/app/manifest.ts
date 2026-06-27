@@ -5,8 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Shellton Auto Mecânica",
     short_name: "Shellton",
     description:
-      "Painel e site da Shellton Auto Mecânica — agendamentos, fila e notificações.",
-    start_url: "/admin/dashboard",
+      "Agende serviços, acompanhe a fila e receba avisos da Shellton Auto Mecânica.",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: "#09090b",
