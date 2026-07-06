@@ -3,7 +3,11 @@
  * Espelham os schemas previstos no Supabase (ver supabase/schema.sql).
  */
 
-export type AgendamentoStatus = "pendente" | "aprovado" | "recusado";
+export type AgendamentoStatus =
+  | "pendente"
+  | "aprovado"
+  | "recusado"
+  | "em_espera";
 
 export type FilaStatus = "na_fila" | "em_manutencao" | "pronto";
 
@@ -80,6 +84,8 @@ export interface Agendamento {
   push_endpoint?: string | null;
   push_p256dh?: string | null;
   push_auth?: string | null;
+  /** Posição na lista de espera (quando status = em_espera). */
+  posicao_espera?: number | null;
 }
 
 export interface FilaItem {
@@ -108,4 +114,5 @@ export const AGENDAMENTO_STATUS_LABEL: Record<AgendamentoStatus, string> = {
   pendente: "Pendente",
   aprovado: "Aprovado",
   recusado: "Recusado",
+  em_espera: "Lista de espera",
 };

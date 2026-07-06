@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -19,6 +19,7 @@ import {
   Bell,
   BellRing,
   Smartphone,
+  Hourglass,
 } from "lucide-react";
 import {
   Card,
@@ -33,7 +34,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SchedulePicker } from "@/components/agendamento/schedule-picker";
-import { submitAgendamento } from "@/app/(public)/agendamento/actions";
+import { submitAgendamento, submitListaEspera, getCapacityStatus } from "@/app/(public)/agendamento/actions";
+import type { CapacityStatus } from "@/lib/capacity-server";
 import { useDB, getServicosAtivos } from "@/lib/store";
 import { resolveAgenda } from "@/lib/agenda-defaults";
 import { periodWindowForSlot, normalizeTime } from "@/lib/agenda";
@@ -74,7 +76,12 @@ export default function AgendamentoPage() {
   const config = resolveAgenda(agendaConfig);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{
+    id: string;
+    modo: "agendamento" | "espera";
+    posicao?: number;
+  } | null>(null);
+  const [capStatus, setCapStatus] = useState<CapacityStatus | null>(null);
   const [clientPush, setClientPush] = useState<ClientPushSubscription | null>(
     null
   );
@@ -85,6 +92,19 @@ export default function AgendamentoPage() {
 
   const servicoSelecionado = ativos.find((s) => s.titulo === form.servico_nome);
   const duracaoPeriodos = servicoSelecionado?.duracao_periodos ?? 1;
+  const lotado = capStatus?.lotado ?? false;
+
+  useEffect(() => {
+    getCapacityStatus()
+      .then(setCapStatus)
+      .catch(() => {});
+  }, []);
+
+  function refreshCapacity() {
+    getCapacityStatus()
+      .then(setCapStatus)
+      .catch(() => {});
+  }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -131,7 +151,8 @@ export default function AgendamentoPage() {
         setClientPush(res.subscription);
         setPushStatus("enabled");
         toast.success("Notificações ativadas!", {
-          description: "Você será avisado sobre o andamento do seu serviço.",
+          description:
+            "Você será avisado sobre aprovação, lista de espera e cada etapa do serviço.",
         });
       } else {
         setPushStatus("error");
@@ -153,11 +174,57 @@ export default function AgendamentoPage() {
       !form.cliente_nome ||
       !form.telefone ||
       !form.modelo ||
-      !form.servico_nome ||
-      !form.data_hora ||
-      !form.horario_chegada
+      !form.servico_nome
     ) {
       toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    if (lotado) {
+      setLoading(true);
+      try {
+        const res = await submitListaEspera({
+          cliente_nome: form.cliente_nome.trim(),
+          telefone: form.telefone.trim(),
+          placa: form.placa.trim().toUpperCase(),
+          modelo: form.modelo.trim(),
+          servico_nome: form.servico_nome,
+          observacoes: form.observacoes.trim() || undefined,
+          periodos: duracaoPeriodos,
+          clientPush,
+        });
+
+        if (!res.success) {
+          toast.error("Não foi possível entrar na lista de espera.", {
+            description: res.error,
+          });
+          return;
+        }
+
+        setSuccess({
+          id: res.id,
+          modo: "espera",
+          posicao: res.posicao,
+        });
+        setForm(EMPTY);
+        refreshCapacity();
+        toast.success("Você entrou na lista de espera!", {
+          description: `Posição ${res.posicao} na fila.`,
+        });
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Tente novamente em instantes.";
+        toast.error("Não foi possível entrar na lista de espera.", {
+          description: msg,
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!form.data_hora || !form.horario_chegada) {
+      toast.error("Selecione o dia, período e horário de chegada.");
       return;
     }
 
@@ -202,8 +269,9 @@ export default function AgendamentoPage() {
         return;
       }
 
-      setSuccess(res.id);
+      setSuccess({ id: res.id, modo: "agendamento" });
       setForm(EMPTY);
+      refreshCapacity();
       toast.success("Agendamento enviado!", {
         description: "Sua solicitação está pendente de aprovação.",
       });
@@ -227,21 +295,48 @@ export default function AgendamentoPage() {
   }
 
   if (success) {
+    const isEspera = success.modo === "espera";
     return (
       <section className="mx-auto flex w-full max-w-xl flex-col items-center px-4 py-24 text-center">
-        <div className="mb-6 flex size-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500 animate-fade-in">
-          <CheckCircle2 className="size-10" />
+        <div
+          className={cn(
+            "mb-6 flex size-20 items-center justify-center rounded-full animate-fade-in",
+            isEspera
+              ? "bg-amber-500/15 text-amber-500"
+              : "bg-emerald-500/15 text-emerald-500"
+          )}
+        >
+          {isEspera ? (
+            <Hourglass className="size-10" />
+          ) : (
+            <CheckCircle2 className="size-10" />
+          )}
         </div>
         <h1 className="text-3xl font-bold text-foreground">
-          Agendamento recebido!
+          {isEspera ? "Você está na lista de espera!" : "Agendamento recebido!"}
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Sua solicitação foi registrada com o protocolo{" "}
-          <span className="font-mono font-semibold text-primary">
-            #{success}
-          </span>{" "}
-          e está <strong>pendente de aprovação</strong>. Assim que confirmada,
-          seu veículo entrará na fila de atendimento.
+          {isEspera ? (
+            <>
+              Registramos seu pedido com o protocolo{" "}
+              <span className="font-mono font-semibold text-primary">
+                #{success.id}
+              </span>
+              . Você está na posição{" "}
+              <strong className="text-foreground">{success.posicao}</strong> da
+              fila. Assim que uma vaga liberar, entraremos em contato e seu
+              veículo será atendido automaticamente.
+            </>
+          ) : (
+            <>
+              Sua solicitação foi registrada com o protocolo{" "}
+              <span className="font-mono font-semibold text-primary">
+                #{success.id}
+              </span>{" "}
+              e está <strong>pendente de aprovação</strong>. Assim que
+              confirmada, seu veículo entrará na fila de atendimento.
+            </>
+          )}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link href="/fila" className={cn(buttonVariants({ size: "lg" }))}>
@@ -251,9 +346,12 @@ export default function AgendamentoPage() {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => setSuccess(null)}
+            onClick={() => {
+              setSuccess(null);
+              refreshCapacity();
+            }}
           >
-            Fazer novo agendamento
+            {isEspera ? "Voltar" : "Fazer novo agendamento"}
           </Button>
         </div>
       </section>
@@ -275,9 +373,17 @@ export default function AgendamentoPage() {
           Agende seu serviço
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          Preencha os dados abaixo. Sua solicitação será analisada e confirmada
-          pela nossa equipe.
+          {lotado
+            ? "No momento todas as vagas estão ocupadas. Entre na lista de espera e seremos avisados quando liberar uma vaga."
+            : "Preencha os dados abaixo. Sua solicitação será analisada e confirmada pela nossa equipe."}
         </p>
+        {capStatus && (
+          <p className="mx-auto mt-2 text-xs text-muted-foreground">
+            Pátio: {capStatus.ativos}/{capStatus.capacidade} ocupado
+            {capStatus.listaEspera > 0 &&
+              ` · ${capStatus.listaEspera} na lista de espera`}
+          </p>
+        )}
       </div>
 
       <div className="relative mx-auto grid w-full max-w-6xl 3xl:max-w-[1700px] gap-6 lg:grid-cols-[1fr_340px] lg:items-start">
@@ -291,6 +397,19 @@ export default function AgendamentoPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {lotado && (
+              <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200/90">
+                <p className="flex items-center gap-2 font-semibold text-amber-400">
+                  <Hourglass className="size-4" />
+                  Pátio lotado — lista de espera
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  Não é possível agendar horário agora. Preencha seus dados para
+                  entrar na fila; quando uma vaga liberar, você será atendido na
+                  ordem de chegada.
+                </p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -385,6 +504,8 @@ export default function AgendamentoPage() {
                 </div>
               </div>
 
+              {!lotado && (
+                <>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <CalendarCheck className="size-4 text-primary" />
@@ -428,6 +549,8 @@ export default function AgendamentoPage() {
                     </p>
                   </div>
                 </div>
+              )}
+                </>
               )}
 
               <div className="space-y-2">
@@ -475,8 +598,10 @@ export default function AgendamentoPage() {
                     </p>
                     <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                       {pushStatus === "enabled"
-                        ? "Você será avisado quando o pedido for aceito e a cada atualização do serviço."
-                        : "Ative para saber na hora quando seu pedido for aceito e quando o carro estiver pronto."}
+                        ? "Você receberá avisos sobre aprovação, posição na espera, entrada no atendimento e quando o carro estiver pronto."
+                        : lotado
+                          ? "Ative para saber sua posição na espera e quando uma vaga liberar."
+                          : "Ative para saber quando o pedido for aceito e a cada atualização do serviço."}
                     </p>
 
                     {pushStatus !== "enabled" && (
@@ -523,6 +648,11 @@ export default function AgendamentoPage() {
                     <Loader2 className="animate-spin" />
                     Enviando...
                   </>
+                ) : lotado ? (
+                  <>
+                    Entrar na lista de espera
+                    <ArrowRight />
+                  </>
                 ) : (
                   <>
                     Enviar solicitação
@@ -532,7 +662,9 @@ export default function AgendamentoPage() {
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">
-                Sem custo para agendar. Você só confirma após nosso retorno.
+                {lotado
+                  ? "Sem custo. Você será avisado quando sua vaga for liberada."
+                  : "Sem custo para agendar. Você só confirma após nosso retorno."}
               </p>
             </form>
           </CardContent>

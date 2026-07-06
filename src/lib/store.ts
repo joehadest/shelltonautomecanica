@@ -8,7 +8,11 @@ import {
   notifyNewAgendamento,
   notifyClientAgendamentoStatus,
   notifyClientFilaStatus,
+  notifyClient,
+  notifyWaitlistAdvances,
 } from "@/app/admin/push-actions";
+import { processarVagaLiberada } from "@/app/(public)/agendamento/actions";
+import { resolveAgenda } from "@/lib/agenda-defaults";
 import type { ClientPushSubscription } from "@/lib/push-client";
 import type {
   Agendamento,
@@ -33,6 +37,12 @@ async function releaseAgendaVaga(agendamentoId: string) {
   if (error && !isMissingColumnError(error)) {
     console.error("releaseAgendaVaga:", error.message);
   }
+}
+
+/** Libera vaga e puxa o próximo da lista de espera, se houver. */
+async function liberarVagaEPromover(agendamentoId?: string | null) {
+  if (agendamentoId) await releaseAgendaVaga(agendamentoId);
+  void processarVagaLiberada().catch(() => {});
 }
 
 interface DBState {
@@ -356,13 +366,25 @@ export const agendamentosApi = {
   },
   async setStatus(id: string, status: AgendamentoStatus) {
     return mutate(async () => {
+      const prev = state.agendamentos.find((a) => a.id === id);
       const { error } = await supabase
         .from("agendamentos")
         .update({ status })
         .eq("id", id);
       if (error) throw error;
-      // Avisa o cliente (aprovado/recusado).
-      void notifyClientAgendamentoStatus(id, status).catch(() => {});
+
+      if (status === "recusado" && prev?.status === "em_espera") {
+        void notifyClient(id, {
+          kind: "agendamento_recusado",
+          fromEspera: true,
+        }).catch(() => {});
+        void notifyWaitlistAdvances().catch(() => {});
+      } else {
+        void notifyClientAgendamentoStatus(id, status, {
+          fromEspera: prev?.status === "em_espera",
+          posicao: prev?.posicao_espera ?? undefined,
+        }).catch(() => {});
+      }
     });
   },
   async aprovar(id: string) {
@@ -371,6 +393,13 @@ export const agendamentosApi = {
       if (!agd) throw new Error("Agendamento não encontrado");
 
       const ativos = getFilaAtiva(state.fila);
+      const capacidade = resolveAgenda(state.agendaConfig).capacidade;
+      if (ativos.length >= capacidade) {
+        throw new Error(
+          `Pátio lotado (${capacidade} vagas). Finalize um serviço ou promova da lista de espera.`
+        );
+      }
+
       const posicao = ativos.length + 1;
 
       const { error: errAgd } = await supabase
@@ -391,8 +420,7 @@ export const agendamentosApi = {
         arquivado: false,
       });
       if (errFila) throw errFila;
-      // Avisa o cliente que o pedido foi aprovado e entrou na fila.
-      void notifyClientAgendamentoStatus(agd.id, "aprovado").catch(() => {});
+      void notifyClient(agd.id, { kind: "agendamento_aprovado" }).catch(() => {});
     });
   },
   async remove(id: string) {
@@ -404,9 +432,74 @@ export const agendamentosApi = {
       if (error) throw error;
     });
   },
-};
+  async moveEspera(id: string, direction: "up" | "down") {
+    return mutate(async () => {
+      const lista = getListaEspera(state.agendamentos);
+      const idx = lista.findIndex((a) => a.id === id);
+      if (idx === -1) return;
+      const swapWith = direction === "up" ? idx - 1 : idx + 1;
+      if (swapWith < 0 || swapWith >= lista.length) return;
 
-/* ------------------------------- Fila ------------------------------ */
+      const a = lista[idx];
+      const b = lista[swapWith];
+      const posA = a.posicao_espera ?? idx + 1;
+      const posB = b.posicao_espera ?? swapWith + 1;
+
+      const [resA, resB] = await Promise.all([
+        supabase
+          .from("agendamentos")
+          .update({ posicao_espera: posB })
+          .eq("id", a.id),
+        supabase
+          .from("agendamentos")
+          .update({ posicao_espera: posA })
+          .eq("id", b.id),
+      ]);
+      if (resA.error) throw resA.error;
+      if (resB.error) throw resB.error;
+    });
+  },
+  async promoverEspera(id: string) {
+    return mutate(async () => {
+      const ativos = getFilaAtiva(state.fila);
+      const capacidade = resolveAgenda(state.agendaConfig).capacidade;
+      if (ativos.length >= capacidade) {
+        throw new Error("Não há vaga livre no pátio.");
+      }
+      const agd = state.agendamentos.find((a) => a.id === id);
+      if (!agd || agd.status !== "em_espera") {
+        throw new Error("Registro não está na lista de espera.");
+      }
+
+      const now = new Date().toISOString();
+      const { error: errAgd } = await supabase
+        .from("agendamentos")
+        .update({
+          status: "aprovado",
+          data_hora: now,
+          agenda_fim: null,
+          posicao_espera: null,
+        })
+        .eq("id", id);
+      if (errAgd) throw errAgd;
+
+      const { error: errFila } = await supabase.from("fila_usuarios").insert({
+        cliente_nome: agd.cliente_nome,
+        telefone: agd.telefone,
+        placa: agd.placa,
+        modelo: agd.modelo,
+        servico_nome: agd.servico_nome,
+        status: "na_fila",
+        posicao: ativos.length + 1,
+        agendamento_id: agd.id,
+        arquivado: false,
+      });
+      if (errFila) throw errFila;
+      void notifyClient(agd.id, { kind: "promovido_da_espera" }).catch(() => {});
+      void notifyWaitlistAdvances().catch(() => {});
+    });
+  },
+};
 
 export const filaApi = {
   async setStatus(id: string, status: FilaStatus) {
@@ -418,10 +511,9 @@ export const filaApi = {
         .eq("id", id);
       if (error) throw error;
       if (item?.agendamento_id && status === "pronto") {
-        await releaseAgendaVaga(item.agendamento_id);
-      }
-      // Avisa o cliente sobre a mudança (em manutenção / pronto).
-      if (item?.agendamento_id) {
+        void notifyClientFilaStatus(item.agendamento_id, status).catch(() => {});
+        await liberarVagaEPromover(item.agendamento_id);
+      } else if (item?.agendamento_id) {
         void notifyClientFilaStatus(item.agendamento_id, status).catch(() => {});
       }
     });
@@ -464,8 +556,8 @@ export const filaApi = {
         .eq("id", id);
       if (error) throw error;
       if (item?.agendamento_id) {
-        await releaseAgendaVaga(item.agendamento_id);
         void notifyClientFilaStatus(item.agendamento_id, "pronto").catch(() => {});
+        await liberarVagaEPromover(item.agendamento_id);
       }
     });
   },
@@ -508,6 +600,16 @@ export function getHistorico(fila: FilaItem[]): FilaItem[] {
       (a, b) =>
         new Date(b.finalizado_em ?? 0).getTime() -
         new Date(a.finalizado_em ?? 0).getTime()
+    );
+}
+
+export function getListaEspera(agendamentos: Agendamento[]): Agendamento[] {
+  return agendamentos
+    .filter((a) => a.status === "em_espera")
+    .sort(
+      (a, b) =>
+        (a.posicao_espera ?? 999) - (b.posicao_espera ?? 999) ||
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 }
 

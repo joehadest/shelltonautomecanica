@@ -12,7 +12,7 @@ import {
   CalendarCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDB } from "@/lib/store";
+import { useDB, getListaEspera } from "@/lib/store";
 import { OverviewPanel } from "@/components/admin/overview-panel";
 import { AgendamentosPanel } from "@/components/admin/agendamentos-panel";
 import { FilaPanel } from "@/components/admin/fila-panel";
@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const { agendamentos } = useDB();
 
   const pendentes = agendamentos.filter((a) => a.status === "pendente").length;
+  const listaEspera = getListaEspera(agendamentos).length;
 
   return (
     <div className="mx-auto w-full max-w-7xl 3xl:max-w-[1920px] px-4 py-8">
@@ -65,7 +66,11 @@ export default function DashboardPage() {
         {TABS.map((t) => {
           const active = tab === t.id;
           const badge =
-            t.id === "agendamentos" && pendentes > 0 ? pendentes : null;
+            t.id === "agendamentos" && pendentes > 0
+              ? pendentes
+              : t.id === "fila" && listaEspera > 0
+                ? listaEspera
+                : null;
           return (
             <button
               key={t.id}

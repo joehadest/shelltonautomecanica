@@ -14,14 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FilaStatusBadge } from "@/components/fila-status-badge";
+import { WaitlistPanel } from "@/components/admin/waitlist-panel";
 import { useDB, filaApi, getFilaAtiva, getHistorico } from "@/lib/store";
+import { resolveAgenda } from "@/lib/agenda-defaults";
 import { formatDateTime } from "@/lib/utils";
 import { FILA_STATUS_LABEL, type FilaStatus } from "@/lib/types";
 
 export function FilaPanel() {
-  const { fila } = useDB();
+  const { fila, agendaConfig } = useDB();
   const ativa = getFilaAtiva(fila);
   const historico = getHistorico(fila);
+  const config = resolveAgenda(agendaConfig);
 
   async function mudarStatus(id: string, status: FilaStatus) {
     try {
@@ -62,7 +65,17 @@ export function FilaPanel() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
+      <WaitlistPanel />
+
+      <div className="rounded-xl border border-border bg-card/40 px-4 py-3 text-sm text-muted-foreground">
+        Capacidade do pátio:{" "}
+        <strong className="text-foreground">
+          {ativa.length}/{config.capacidade}
+        </strong>{" "}
+        veículos em atendimento
+      </div>
+
       <div>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-lg font-semibold text-foreground">
@@ -83,7 +96,6 @@ export function FilaPanel() {
             {ativa.map((item, idx) => (
               <Card key={item.id} className="p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                  {/* Posição + reordenar */}
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col">
                       <Button
@@ -112,7 +124,6 @@ export function FilaPanel() {
                     </span>
                   </div>
 
-                  {/* Info */}
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-foreground">
                       {item.cliente_nome}
@@ -124,7 +135,6 @@ export function FilaPanel() {
                     </p>
                   </div>
 
-                  {/* Ações */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Select
                       value={item.status}
@@ -153,7 +163,6 @@ export function FilaPanel() {
         )}
       </div>
 
-      {/* Histórico */}
       <div>
         <div className="mb-3 flex items-center gap-2">
           <History className="size-5 text-muted-foreground" />

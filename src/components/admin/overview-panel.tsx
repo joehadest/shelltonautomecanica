@@ -11,18 +11,21 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDB, getFilaAtiva } from "@/lib/store";
+import { useDB, getFilaAtiva, getListaEspera } from "@/lib/store";
+import { resolveAgenda } from "@/lib/agenda-defaults";
 import { formatDateTime } from "@/lib/utils";
-import { FILA_STATUS_LABEL } from "@/lib/types";
+import { FILA_STATUS_LABEL, AGENDAMENTO_STATUS_LABEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function OverviewPanel() {
-  const { agendamentos, fila } = useDB();
+  const { agendamentos, fila, agendaConfig } = useDB();
 
   const pendentes = agendamentos.filter((a) => a.status === "pendente");
   const aprovados = agendamentos.filter((a) => a.status === "aprovado");
+  const listaEspera = getListaEspera(agendamentos);
   const ativa = getFilaAtiva(fila);
-  const emManutencao = ativa.filter((f) => f.status === "em_manutencao");
+  const config = resolveAgenda(agendaConfig);
+  const vagasLivres = Math.max(0, config.capacidade - ativa.length);
   const prontos = ativa.filter((f) => f.status === "pronto");
 
   const hoje = new Date().toDateString();
@@ -42,10 +45,18 @@ export function OverviewPanel() {
     {
       label: "Na fila",
       value: ativa.length,
-      hint: `${emManutencao.length} em manutenção`,
+      hint: `${ativa.length}/${config.capacidade} vagas · ${vagasLivres} livre${vagasLivres !== 1 ? "s" : ""}`,
       icon: ListOrdered,
       tone: "text-sky-400",
       bg: "bg-sky-400/10",
+    },
+    {
+      label: "Lista de espera",
+      value: listaEspera.length,
+      hint: "aguardando vaga no pátio",
+      icon: Clock,
+      tone: "text-amber-400",
+      bg: "bg-amber-400/10",
     },
     {
       label: "Prontos",
@@ -75,7 +86,7 @@ export function OverviewPanel() {
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {kpis.map((k) => (
           <Card key={k.label} className="p-5">
             <div className="flex items-start justify-between">
@@ -132,10 +143,12 @@ export function OverviewPanel() {
                         ? "warning"
                         : a.status === "aprovado"
                           ? "success"
-                          : "danger"
+                          : a.status === "em_espera"
+                            ? "warning"
+                            : "danger"
                     }
                   >
-                    {a.status}
+                    {AGENDAMENTO_STATUS_LABEL[a.status] ?? a.status}
                   </Badge>
                 </div>
               ))}

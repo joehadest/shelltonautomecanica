@@ -31,6 +31,7 @@ function StatusBadge({ status }: { status: Agendamento["status"] }) {
     pendente: "warning",
     aprovado: "success",
     recusado: "danger",
+    em_espera: "warning",
   } as const;
   return <Badge variant={map[status]}>{AGENDAMENTO_STATUS_LABEL[status]}</Badge>;
 }
@@ -38,7 +39,9 @@ function StatusBadge({ status }: { status: Agendamento["status"] }) {
 export function AgendamentosPanel() {
   const { agendamentos } = useDB();
   const pendentes = agendamentos.filter((a) => a.status === "pendente");
-  const resolvidos = agendamentos.filter((a) => a.status !== "pendente");
+  const resolvidos = agendamentos.filter(
+    (a) => a.status === "aprovado" || a.status === "recusado"
+  );
 
   async function aprovar(a: Agendamento) {
     try {
