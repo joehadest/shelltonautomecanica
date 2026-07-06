@@ -43,7 +43,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col [&_a]:cursor-pointer [&_button]:cursor-pointer [&_label:has(input[type=checkbox])]:cursor-pointer [&_select]:cursor-pointer">
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-lg">
         <div className="mx-auto flex h-16 w-full max-w-7xl 3xl:max-w-[1920px] items-center justify-between px-4">
           <div className="flex items-center gap-3">
@@ -57,7 +57,7 @@ export default function DashboardLayout({
             <Link
               href="/"
               target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <ExternalLink className="size-4" />
               <span className="hidden sm:inline">Ver site</span>

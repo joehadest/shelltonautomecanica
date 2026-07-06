@@ -51,7 +51,7 @@ export function NotificationsBell() {
       <button
         onClick={toggle}
         aria-label="Notificações"
-        className="press-effect relative inline-flex size-10 items-center justify-center rounded-md text-foreground hover:bg-secondary"
+        className="press-effect relative inline-flex size-10 cursor-pointer items-center justify-center rounded-md text-foreground hover:bg-secondary"
       >
         <Bell className="size-5" />
         {unreadCount > 0 && (
@@ -69,14 +69,14 @@ export function NotificationsBell() {
               <button
                 onClick={() => markAllRead()}
                 title="Marcar todas como lidas"
-                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <CheckCheck className="size-4" />
               </button>
               <button
                 onClick={() => clearNotifications()}
                 title="Limpar"
-                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <Trash2 className="size-4" />
               </button>

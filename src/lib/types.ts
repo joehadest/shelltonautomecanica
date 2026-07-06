@@ -51,6 +51,23 @@ export interface FooterConfig {
   updated_at: string;
 }
 
+/** Dados da empresa exibidos no topo dos PDFs de orçamento/recibo. */
+export interface ConfiguracaoEmpresa {
+  id: string;
+  razao_social: string;
+  nome_fantasia: string;
+  cnpj: string;
+  inscricao_estadual: string;
+  endereco: string;
+  cidade_uf: string;
+  telefone: string;
+  email: string;
+  /** Imagem PNG/JPG em data URL (base64) para assinatura no PDF. */
+  assinatura_base64: string | null;
+  assinatura_responsavel: string;
+  updated_at: string;
+}
+
 export interface Servico {
   id: string;
   titulo: string;

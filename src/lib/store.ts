@@ -23,6 +23,7 @@ import type {
   FilaItem,
   FilaStatus,
   FooterConfig,
+  ConfiguracaoEmpresa,
   Servico,
 } from "./types";
 
@@ -52,6 +53,7 @@ interface DBState {
   estatisticas: EstatisticaSite[];
   footer: FooterConfig | null;
   agendaConfig: ConfiguracaoAgenda | null;
+  empresaConfig: ConfiguracaoEmpresa | null;
 }
 
 const EMPTY: DBState = {
@@ -61,6 +63,7 @@ const EMPTY: DBState = {
   estatisticas: [],
   footer: null,
   agendaConfig: null,
+  empresaConfig: null,
 };
 
 let state: DBState = EMPTY;
@@ -76,6 +79,7 @@ function emitChange() {
 let fetchPromise: Promise<void> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let footerTableMissingWarned = false;
+let empresaTableMissingWarned = false;
 let duracaoColumnMissingWarned = false;
 
 const DEFAULT_DURACAO_PERIODOS = 2;
@@ -124,6 +128,7 @@ async function fetchAll() {
     footerRes,
     agendamentosRes,
     agendaRes,
+    empresaRes,
   ] = await Promise.all([
     supabase.from("servicos").select("*").order("ordem"),
     supabase.from("fila_usuarios").select("*").order("posicao"),
@@ -136,6 +141,13 @@ async function fetchAll() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     supabase.from("configuracao_agenda").select("*").limit(1).maybeSingle(),
+    isAuth
+      ? supabase
+          .from("configuracao_empresa")
+          .select("*")
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (servicosRes.error) logQueryError("servicos", servicosRes.error);
@@ -159,6 +171,20 @@ async function fetchAll() {
     logQueryError("agendamentos", agendamentosRes.error);
   if (agendaRes.error && !isMissingTableError(agendaRes.error))
     logQueryError("agenda", agendaRes.error);
+  if (empresaRes.error) {
+    if (
+      isMissingTableError(empresaRes.error) &&
+      !empresaTableMissingWarned &&
+      process.env.NODE_ENV === "development"
+    ) {
+      empresaTableMissingWarned = true;
+      console.warn(
+        "[Shellton] Tabela configuracao_empresa não encontrada. Execute supabase/migration-empresa.sql no SQL Editor do Supabase."
+      );
+    } else if (!isMissingTableError(empresaRes.error)) {
+      logQueryError("empresa", empresaRes.error);
+    }
+  }
 
   const servicosRaw = (servicosRes.data as Servico[]) ?? [];
   if (
@@ -184,6 +210,9 @@ async function fetchAll() {
     agendaConfig: isMissingTableError(agendaRes.error)
       ? null
       : ((agendaRes.data as ConfiguracaoAgenda | null) ?? null),
+    empresaConfig: isMissingTableError(empresaRes.error)
+      ? null
+      : ((empresaRes.data as ConfiguracaoEmpresa | null) ?? null),
   };
   loading = false;
   emitChange();
@@ -243,6 +272,11 @@ function setupRealtime() {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "configuracao_agenda" },
+      scheduleRefresh
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "configuracao_empresa" },
       scheduleRefresh
     )
     .subscribe();
@@ -758,6 +792,54 @@ export const footerApi = {
       if (isMissingTableError(error)) {
         throw new Error(
           "Execute o arquivo supabase/migration-footer.sql no SQL Editor do Supabase."
+        );
+      }
+      if (error) throw error;
+    });
+  },
+};
+
+/* ----------------------------- Empresa (PDF) ----------------------- */
+
+export const empresaApi = {
+  async update(
+    patch: Partial<
+      Pick<
+        ConfiguracaoEmpresa,
+        | "razao_social"
+        | "nome_fantasia"
+        | "cnpj"
+        | "inscricao_estadual"
+        | "endereco"
+        | "cidade_uf"
+        | "telefone"
+        | "email"
+        | "assinatura_base64"
+        | "assinatura_responsavel"
+      >
+    >
+  ) {
+    return mutate(async () => {
+      const current = state.empresaConfig;
+      if (current) {
+        const { error } = await supabase
+          .from("configuracao_empresa")
+          .update({ ...patch, updated_at: new Date().toISOString() })
+          .eq("id", current.id);
+        if (isMissingTableError(error)) {
+          throw new Error(
+            "Execute o arquivo supabase/migration-empresa.sql no SQL Editor do Supabase."
+          );
+        }
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("configuracao_empresa")
+        .insert({ ...patch });
+      if (isMissingTableError(error)) {
+        throw new Error(
+          "Execute o arquivo supabase/migration-empresa.sql no SQL Editor do Supabase."
         );
       }
       if (error) throw error;

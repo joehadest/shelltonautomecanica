@@ -10,6 +10,7 @@ import {
   PanelBottom,
   Settings,
   CalendarCog,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDB, getListaEspera } from "@/lib/store";
@@ -21,6 +22,7 @@ import { EstatisticasPanel } from "@/components/admin/estatisticas-panel";
 import { FooterPanel } from "@/components/admin/footer-panel";
 import { ConfigPanel } from "@/components/admin/config-panel";
 import { AgendaPanel } from "@/components/admin/agenda-panel";
+import { DocumentosPanel } from "@/components/admin/documentos-panel";
 
 type Tab =
   | "visao"
@@ -30,7 +32,8 @@ type Tab =
   | "portfolio"
   | "estatisticas"
   | "footer"
-  | "config";
+  | "config"
+  | "documentos";
 
 const TABS: { id: Tab; label: string; icon: typeof CalendarClock }[] = [
   { id: "visao", label: "Visão geral", icon: LayoutDashboard },
@@ -38,6 +41,7 @@ const TABS: { id: Tab; label: string; icon: typeof CalendarClock }[] = [
   { id: "fila", label: "Fila virtual", icon: ListOrdered },
   { id: "agenda", label: "Agenda e vagas", icon: CalendarCog },
   { id: "portfolio", label: "Portfólio", icon: LayoutGrid },
+  { id: "documentos", label: "Orçamentos", icon: FileText },
   { id: "estatisticas", label: "Números do site", icon: BarChart3 },
   { id: "footer", label: "Rodapé", icon: PanelBottom },
   { id: "config", label: "Configurações", icon: Settings },
@@ -76,7 +80,7 @@ export default function DashboardPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "relative flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
+                "relative flex flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
                 active
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -108,6 +112,7 @@ export default function DashboardPage() {
         {tab === "fila" && <FilaPanel />}
         {tab === "agenda" && <AgendaPanel />}
         {tab === "portfolio" && <PortfolioPanel />}
+        {tab === "documentos" && <DocumentosPanel />}
         {tab === "estatisticas" && <EstatisticasPanel />}
         {tab === "footer" && <FooterPanel />}
         {tab === "config" && <ConfigPanel />}

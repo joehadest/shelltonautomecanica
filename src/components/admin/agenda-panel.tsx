@@ -193,7 +193,7 @@ export function AgendaPanel() {
                   type="button"
                   onClick={() => toggleDia(d.value)}
                   className={cn(
-                    "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
+                    "cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
