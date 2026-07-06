@@ -76,6 +76,16 @@ function emitChange() {
 let fetchPromise: Promise<void> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let footerTableMissingWarned = false;
+let duracaoColumnMissingWarned = false;
+
+const DEFAULT_DURACAO_PERIODOS = 2;
+
+function normalizeServico(row: Servico): Servico {
+  return {
+    ...row,
+    duracao_periodos: row.duracao_periodos ?? DEFAULT_DURACAO_PERIODOS,
+  };
+}
 
 /** Tabela ainda não criada no Supabase (migração pendente). */
 function isMissingTableError(error: { message?: string } | null): boolean {
@@ -150,8 +160,21 @@ async function fetchAll() {
   if (agendaRes.error && !isMissingTableError(agendaRes.error))
     logQueryError("agenda", agendaRes.error);
 
+  const servicosRaw = (servicosRes.data as Servico[]) ?? [];
+  if (
+    servicosRaw.length > 0 &&
+    servicosRaw.some((s) => s.duracao_periodos == null) &&
+    !duracaoColumnMissingWarned &&
+    process.env.NODE_ENV === "development"
+  ) {
+    duracaoColumnMissingWarned = true;
+    console.warn(
+      "[Shellton] Coluna servicos.duracao_periodos não encontrada. Execute supabase/agenda-duracao.sql no SQL Editor do Supabase. Usando duração padrão no agendamento."
+    );
+  }
+
   state = {
-    servicos: (servicosRes.data as Servico[]) ?? [],
+    servicos: servicosRaw.map(normalizeServico),
     fila: (filaRes.data as FilaItem[]) ?? [],
     estatisticas: (estatisticasRes.data as EstatisticaSite[]) ?? [],
     footer: isMissingTableError(footerRes.error)
@@ -277,6 +300,15 @@ export const servicosApi = {
       if (error && isMissingColumnError(error)) {
         const fallback: Record<string, unknown> = { ...data };
         delete fallback.duracao_periodos;
+        if (
+          !duracaoColumnMissingWarned &&
+          process.env.NODE_ENV === "development"
+        ) {
+          duracaoColumnMissingWarned = true;
+          console.warn(
+            "[Shellton] Coluna servicos.duracao_periodos não encontrada. Execute supabase/agenda-duracao.sql no SQL Editor do Supabase."
+          );
+        }
         ({ data: row, error } = await supabase
           .from("servicos")
           .insert(fallback)
@@ -296,6 +328,15 @@ export const servicosApi = {
       if (error && isMissingColumnError(error)) {
         const fallback: Record<string, unknown> = { ...patch };
         delete fallback.duracao_periodos;
+        if (
+          !duracaoColumnMissingWarned &&
+          process.env.NODE_ENV === "development"
+        ) {
+          duracaoColumnMissingWarned = true;
+          console.warn(
+            "[Shellton] Coluna servicos.duracao_periodos não encontrada. Execute supabase/agenda-duracao.sql no SQL Editor do Supabase."
+          );
+        }
         ({ error } = await supabase
           .from("servicos")
           .update(fallback)

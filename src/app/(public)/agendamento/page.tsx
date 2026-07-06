@@ -38,7 +38,7 @@ import { submitAgendamento, submitListaEspera, getCapacityStatus } from "@/app/(
 import type { CapacityStatus } from "@/lib/capacity-server";
 import { useDB, getServicosAtivos } from "@/lib/store";
 import { resolveAgenda } from "@/lib/agenda-defaults";
-import { periodWindowForSlot, normalizeTime } from "@/lib/agenda";
+import { periodWindowForSlot, normalizeTime, duracaoLabel } from "@/lib/agenda";
 import {
   subscribeClientPush,
   isPushSupported,
@@ -91,7 +91,7 @@ export default function AgendamentoPage() {
   const [pushMsg, setPushMsg] = useState<string | null>(null);
 
   const servicoSelecionado = ativos.find((s) => s.titulo === form.servico_nome);
-  const duracaoPeriodos = servicoSelecionado?.duracao_periodos ?? 1;
+  const duracaoPeriodos = servicoSelecionado?.duracao_periodos ?? 2;
   const lotado = capStatus?.lotado ?? false;
 
   useEffect(() => {
@@ -490,11 +490,28 @@ export default function AgendamentoPage() {
                     {ativos.map((s) => (
                       <option key={s.id} value={s.titulo}>
                         {s.titulo === "Avaliação"
-                          ? "Avaliação — não sei qual o defeito"
-                          : s.titulo}
+                          ? `Avaliação — não sei qual o defeito (${duracaoLabel(s.duracao_periodos)})`
+                          : `${s.titulo} — ${duracaoLabel(s.duracao_periodos)}`}
                       </option>
                     ))}
                   </Select>
+                  {servicoSelecionado && (
+                    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                      <span>
+                        Tempo estimado para{" "}
+                        <strong className="text-foreground">
+                          {servicoSelecionado.titulo}
+                        </strong>
+                        :{" "}
+                        <strong className="text-foreground">
+                          {duracaoLabel(duracaoPeriodos)}
+                        </strong>
+                        . A vaga no pátio fica reservada até o serviço ser
+                        concluído.
+                      </span>
+                    </p>
+                  )}
                   {form.servico_nome === "Avaliação" && (
                     <p className="text-xs text-muted-foreground">
                       Nossa equipe vai inspecionar o veículo e informar o que

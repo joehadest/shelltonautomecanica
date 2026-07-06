@@ -199,7 +199,8 @@ export function PortfolioPanel() {
               {editing ? "Editar serviço" : "Novo serviço"}
             </DialogTitle>
             <DialogDescription>
-              Esses dados aparecem no portfólio da página inicial.
+              Esses dados aparecem no portfólio e definem o tempo estimado na
+              área de agendamento.
             </DialogDescription>
           </DialogHeader>
 
