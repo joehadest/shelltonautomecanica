@@ -50,6 +50,7 @@ import {
   buildWhatsAppUrl,
   calcularTotais,
   createEmptyItem,
+  createEmptyDraft,
   draftFromAgendamento,
   formatCurrency,
   formatPhoneDisplay,
@@ -62,6 +63,8 @@ import {
   downloadDocumentoPdf,
   shareDocumentoPdf,
 } from "@/lib/documento-pdf";
+
+const MANUAL_ID = "__manual__";
 
 function StatusBadge({ status }: { status: Agendamento["status"] }) {
   const map = {
@@ -165,28 +168,44 @@ function DocumentPreview({
   return (
     <div className="rounded-xl border border-border bg-background p-5 font-mono text-xs leading-relaxed shadow-inner">
       <div className="rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-        <p className="text-sm font-bold uppercase tracking-wide">
-          {empresa.nome_fantasia}
-        </p>
-        <p className="mt-1 text-[10px] opacity-90">{empresa.razao_social}</p>
-        <p className="mt-0.5 text-[10px] opacity-80">
-          CNPJ: {empresa.cnpj}
-          {empresa.inscricao_estadual &&
-            ` · IE: ${empresa.inscricao_estadual}`}
-        </p>
-        <p className="mt-0.5 text-[10px] opacity-80">
-          {[empresa.endereco, empresa.cidade_uf].filter(Boolean).join(" — ")}
-        </p>
-        <p className="mt-0.5 text-[10px] opacity-80">
-          {[empresa.telefone, empresa.email].filter(Boolean).join(" · ")}
-        </p>
-        <div className="mt-2 flex items-center justify-between border-t border-primary-foreground/20 pt-2">
-          <span className="text-[10px] font-bold uppercase">
-            {DOCUMENTO_TIPO_LABEL[draft.tipo]}
-          </span>
-          <span className="text-[9px] opacity-80">
-            Documento informativo — sem valor fiscal
-          </span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={empresa.logo_base64 || "/shellton-logo.png"}
+              alt="Logo"
+              className="size-12 shrink-0 rounded-md bg-white/10 object-contain p-1"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-bold uppercase tracking-wide">
+                {empresa.nome_fantasia}
+              </p>
+              <p className="mt-1 text-[10px] opacity-90">
+                {empresa.razao_social}
+              </p>
+              <p className="mt-0.5 text-[10px] opacity-80">
+                CNPJ: {empresa.cnpj}
+                {empresa.inscricao_estadual &&
+                  ` · IE: ${empresa.inscricao_estadual}`}
+              </p>
+              <p className="mt-0.5 text-[10px] opacity-80">
+                {[empresa.endereco, empresa.cidade_uf].filter(Boolean).join(" — ")}
+              </p>
+              <p className="mt-0.5 text-[10px] opacity-80">
+                {[empresa.telefone, empresa.email].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] font-bold uppercase">
+              {DOCUMENTO_TIPO_LABEL[draft.tipo]}
+            </p>
+            <p className="mt-1 text-[9px] opacity-80">
+              Documento informativo
+              <br />
+              sem valor fiscal
+            </p>
+          </div>
         </div>
       </div>
 
@@ -457,7 +476,12 @@ export function DocumentosPanel() {
     );
   }, [elegiveis, busca]);
 
-  const selected = elegiveis.find((a) => a.id === selectedId) ?? null;
+  const isManual = selectedId === MANUAL_ID;
+
+  function novoManual(tipo: DocumentoTipo = "orcamento") {
+    setSelectedId(MANUAL_ID);
+    setDraft(createEmptyDraft(tipo));
+  }
 
   function selecionar(a: Agendamento) {
     setSelectedId(a.id);
@@ -517,10 +541,14 @@ export function DocumentosPanel() {
     return true;
   }
 
-  function baixarPdf() {
+  async function baixarPdf() {
     if (!draft || !validarDraft()) return;
-    downloadDocumentoPdf(draft, empresa);
-    toast.success("PDF baixado com sucesso.");
+    try {
+      await downloadDocumentoPdf(draft, empresa);
+      toast.success("PDF baixado com sucesso.");
+    } catch {
+      toast.error("Não foi possível gerar o PDF.");
+    }
   }
 
   async function enviarWhatsApp() {
@@ -559,8 +587,8 @@ export function DocumentosPanel() {
           Orçamentos e Recibos
         </h2>
         <p className="text-sm text-muted-foreground">
-          Selecione um pedido, monte a planilha e gere o PDF para enviar pelo
-          WhatsApp do cliente.
+          Selecione um pedido do site ou crie um orçamento manual para clientes
+          avulsos. Gere o PDF e envie pelo WhatsApp.
         </p>
       </div>
 
@@ -569,6 +597,44 @@ export function DocumentosPanel() {
       <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
         {/* Lista de pedidos */}
         <div className="space-y-3">
+          <div className="grid gap-2">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => novoManual("orcamento")}
+            >
+              <Plus />
+              Novo orçamento manual
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => novoManual("recibo")}
+            >
+              <Receipt className="size-4" />
+              Novo recibo manual
+            </Button>
+          </div>
+
+          {isManual && draft && (
+            <button
+              type="button"
+              onClick={() => novoManual(draft.tipo)}
+              className="w-full cursor-pointer rounded-xl border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary/30"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium text-foreground">
+                  {draft.clienteNome.trim() || "Documento avulso"}
+                </p>
+                <Badge variant="secondary">Manual</Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {DOCUMENTO_TIPO_LABEL[draft.tipo]} · preencha os dados ao lado
+              </p>
+            </button>
+          )}
+
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -579,16 +645,16 @@ export function DocumentosPanel() {
             />
           </div>
 
-          {filtrados.length === 0 ? (
+          {filtrados.length === 0 && !isManual ? (
             <Card className="flex flex-col items-center gap-2 p-8 text-center">
               <Inbox className="size-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {elegiveis.length === 0
-                  ? "Nenhum pedido disponível. Os contatos aparecem aqui quando o cliente agenda pelo site."
+                  ? "Nenhum pedido pelo site ainda. Use os botões acima para criar um documento avulso."
                   : "Nenhum resultado para a busca."}
               </p>
             </Card>
-          ) : (
+          ) : filtrados.length > 0 ? (
             <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto pr-1">
               {filtrados.map((a) => {
                 const active = selectedId === a.id;
@@ -626,19 +692,40 @@ export function DocumentosPanel() {
                 );
               })}
             </div>
+          ) : null}
+
+          {elegiveis.length > 0 && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              Pedidos feitos pelo site
+            </p>
           )}
         </div>
 
         {/* Gerador de documento */}
-        {!draft || !selected ? (
+        {!draft ? (
           <Card className="flex min-h-[420px] flex-col items-center justify-center gap-3 p-10 text-center">
             <FileText className="size-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Selecione um pedido à esquerda para gerar um orçamento ou recibo.
+              Selecione um pedido ou crie um orçamento/recibo manual.
             </p>
+            <Button type="button" onClick={() => novoManual("orcamento")}>
+              <Plus />
+              Criar orçamento manual
+            </Button>
           </Card>
         ) : (
           <div className="space-y-4">
+            {isManual && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">
+                  Documento avulso
+                </p>
+                <p className="mt-0.5 text-xs">
+                  Preencha os dados do cliente e os itens abaixo. Não é
+                  necessário agendamento pelo site.
+                </p>
+              </div>
+            )}
             {/* Tipo de documento */}
             <Card>
               <CardHeader className="pb-3">
@@ -892,7 +979,7 @@ export function DocumentosPanel() {
                           size="lg"
                           variant="outline"
                           className="h-auto min-h-12 w-full whitespace-normal px-4 py-3 text-sm"
-                          onClick={baixarPdf}
+                          onClick={() => void baixarPdf()}
                         >
                           <FileDown className="size-4 shrink-0" />
                           Baixar PDF

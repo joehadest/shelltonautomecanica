@@ -62,6 +62,8 @@ export interface ConfiguracaoEmpresa {
   cidade_uf: string;
   telefone: string;
   email: string;
+  /** Logo PNG/JPG em data URL para o cabeçalho do PDF. */
+  logo_base64: string | null;
   /** Imagem PNG/JPG em data URL (base64) para assinatura no PDF. */
   assinatura_base64: string | null;
   assinatura_responsavel: string;

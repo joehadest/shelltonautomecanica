@@ -814,6 +814,7 @@ export const empresaApi = {
         | "cidade_uf"
         | "telefone"
         | "email"
+        | "logo_base64"
         | "assinatura_base64"
         | "assinatura_responsavel"
       >

@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { ConfiguracaoEmpresa } from "./types";
+import { resolveLogoForPdf } from "./empresa-logo";
 import {
   type DocumentoDraft,
   type DocumentoItem,
@@ -31,16 +32,37 @@ function renderEmpresaHeader(
   empresa: ConfiguracaoEmpresa,
   draft: DocumentoDraft,
   margin: number,
-  pageWidth: number
+  pageWidth: number,
+  logoDataUrl: string | null
 ): number {
   const headerH = 40;
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
   doc.rect(0, 0, pageWidth, headerH, "F");
 
+  const logoSize = 18;
+  const logoY = (headerH - logoSize) / 2;
+  let textX = margin;
+
+  if (logoDataUrl) {
+    try {
+      doc.addImage(
+        logoDataUrl,
+        imageFormat(logoDataUrl),
+        margin,
+        logoY,
+        logoSize,
+        logoSize
+      );
+      textX = margin + logoSize + 4;
+    } catch {
+      textX = margin;
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text(empresa.nome_fantasia.toUpperCase(), margin, 10);
+  doc.text(empresa.nome_fantasia.toUpperCase(), textX, 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
@@ -55,10 +77,10 @@ function renderEmpresaHeader(
     [empresa.telefone, empresa.email].filter(Boolean).join("  ·  "),
   ].filter(Boolean);
 
-  let ly = 16;
+  let ly = 17;
   for (const line of infoLines) {
     if (line.trim()) {
-      doc.text(line, margin, ly);
+      doc.text(line, textX, ly);
       ly += 4.5;
     }
   }
@@ -73,13 +95,13 @@ function renderEmpresaHeader(
   });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(titulo, pageWidth - margin, 10, { align: "right" });
+  doc.text(titulo, pageWidth - margin, 11, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.text("Documento informativo — sem valor fiscal", pageWidth - margin, 16, {
+  doc.text("Documento informativo — sem valor fiscal", pageWidth - margin, 17, {
     align: "right",
   });
-  doc.text(`Emissão: ${emissao}`, pageWidth - margin, 22, { align: "right" });
+  doc.text(`Emissão: ${emissao}`, pageWidth - margin, 23, { align: "right" });
 
   return headerH + 6;
 }
@@ -245,18 +267,26 @@ function renderItemTable(
   return tableFinalY(doc) + 6;
 }
 
-export function buildDocumentoPdf(
+export async function buildDocumentoPdf(
   draft: DocumentoDraft,
   empresa: ConfiguracaoEmpresa
-): jsPDF {
+): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const logoDataUrl = await resolveLogoForPdf(empresa);
   const { subtotalMaoDeObra, subtotalProdutos, subtotal, desconto, total } =
     calcularTotais(draft);
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
 
-  let y = renderEmpresaHeader(doc, empresa, draft, margin, pageWidth);
+  let y = renderEmpresaHeader(
+    doc,
+    empresa,
+    draft,
+    margin,
+    pageWidth,
+    logoDataUrl
+  );
   doc.setTextColor(35, 35, 35);
 
   // Bloco do cliente
@@ -357,18 +387,20 @@ export function buildDocumentoPdf(
   return doc;
 }
 
-export function downloadDocumentoPdf(
+export async function downloadDocumentoPdf(
   draft: DocumentoDraft,
   empresa: ConfiguracaoEmpresa
-): void {
-  buildDocumentoPdf(draft, empresa).save(buildDocumentoFilename(draft));
+): Promise<void> {
+  const doc = await buildDocumentoPdf(draft, empresa);
+  doc.save(buildDocumentoFilename(draft));
 }
 
-export function documentoPdfBlob(
+export async function documentoPdfBlob(
   draft: DocumentoDraft,
   empresa: ConfiguracaoEmpresa
-): Blob {
-  return buildDocumentoPdf(draft, empresa).output("blob");
+): Promise<Blob> {
+  const doc = await buildDocumentoPdf(draft, empresa);
+  return doc.output("blob");
 }
 
 export async function shareDocumentoPdf(
@@ -376,7 +408,7 @@ export async function shareDocumentoPdf(
   empresa: ConfiguracaoEmpresa
 ): Promise<"shared" | "downloaded"> {
   const filename = buildDocumentoFilename(draft);
-  const blob = documentoPdfBlob(draft, empresa);
+  const blob = await documentoPdfBlob(draft, empresa);
   const file = new File([blob], filename, { type: "application/pdf" });
 
   if (typeof navigator !== "undefined" && navigator.share) {
@@ -391,6 +423,6 @@ export async function shareDocumentoPdf(
     }
   }
 
-  downloadDocumentoPdf(draft, empresa);
+  await downloadDocumentoPdf(draft, empresa);
   return "downloaded";
 }

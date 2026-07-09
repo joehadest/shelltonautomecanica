@@ -72,6 +72,25 @@ export function createEmptyItem(descricao = ""): DocumentoItem {
   };
 }
 
+export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDraft {
+  const observacoesPadrao =
+    tipo === "orcamento"
+      ? "Orçamento válido por 7 dias. Valores sujeitos a alteração após diagnóstico presencial."
+      : "Serviço executado conforme descrito. Garantia de 90 dias para mão de obra.";
+
+  return {
+    tipo,
+    clienteNome: "",
+    telefone: "",
+    modelo: "",
+    placa: "",
+    maoDeObra: [createEmptyItem()],
+    produtos: [],
+    desconto: 0,
+    observacoes: observacoesPadrao,
+  };
+}
+
 export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
   const tipo: DocumentoTipo =
     a.status === "aprovado" ? "recibo" : "orcamento";

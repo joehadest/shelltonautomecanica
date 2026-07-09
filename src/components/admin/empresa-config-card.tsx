@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Save, Upload, X, PenLine } from "lucide-react";
+import { Building2, Save, Upload, X, PenLine, ImageIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -15,12 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDB, empresaApi } from "@/lib/store";
 import { resolveEmpresa } from "@/lib/empresa-defaults";
+import { DEFAULT_LOGO_PATH } from "@/lib/empresa-logo";
 import type { ConfiguracaoEmpresa } from "@/lib/types";
 
 type EmpresaDraft = Omit<
   ConfiguracaoEmpresa,
-  "id" | "updated_at" | "assinatura_base64"
-> & { assinatura_base64: string | null };
+  "id" | "updated_at" | "assinatura_base64" | "logo_base64"
+> & { assinatura_base64: string | null; logo_base64: string | null };
 
 function toDraft(empresa: ConfiguracaoEmpresa): EmpresaDraft {
   return {
@@ -32,12 +33,13 @@ function toDraft(empresa: ConfiguracaoEmpresa): EmpresaDraft {
     cidade_uf: empresa.cidade_uf,
     telefone: empresa.telefone,
     email: empresa.email,
+    logo_base64: empresa.logo_base64,
     assinatura_base64: empresa.assinatura_base64,
     assinatura_responsavel: empresa.assinatura_responsavel,
   };
 }
 
-const MAX_ASSINATURA_BYTES = 500_000;
+const MAX_IMAGE_BYTES = 500_000;
 
 export function EmpresaConfigCard() {
   const { empresaConfig } = useDB();
@@ -46,6 +48,7 @@ export function EmpresaConfigCard() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDraft(toDraft(resolveEmpresa(empresaConfig)));
@@ -61,7 +64,11 @@ export function EmpresaConfigCard() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  function onAssinaturaFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function onImageFile(
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "logo_base64" | "assinatura_base64",
+    label: string
+  ) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -69,21 +76,33 @@ export function EmpresaConfigCard() {
       toast.error("Envie uma imagem PNG ou JPG.");
       return;
     }
-    if (file.size > MAX_ASSINATURA_BYTES) {
+    if (file.size > MAX_IMAGE_BYTES) {
       toast.error("Imagem muito grande. Máximo 500 KB.");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      update("assinatura_base64", reader.result as string);
-      toast.success("Assinatura carregada. Salve para aplicar nos PDFs.");
+      update(field, reader.result as string);
+      toast.success(`${label} carregada. Salve para aplicar nos PDFs.`);
     };
     reader.onerror = () => toast.error("Erro ao ler o arquivo.");
     reader.readAsDataURL(file);
   }
 
+  function onAssinaturaFile(e: React.ChangeEvent<HTMLInputElement>) {
+    onImageFile(e, "assinatura_base64", "Assinatura");
+  }
+
+  function onLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    onImageFile(e, "logo_base64", "Logo");
+  }
+
   function removerAssinatura() {
     update("assinatura_base64", null);
+  }
+
+  function removerLogo() {
+    update("logo_base64", null);
   }
 
   async function salvar() {
@@ -209,6 +228,67 @@ export function EmpresaConfigCard() {
                 value={draft.email}
                 onChange={(e) => update("email", e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-secondary/20 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <ImageIcon className="size-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">
+                Logo da empresa
+              </p>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Aparece ao lado do nome no topo do PDF. Se não enviar, usamos a
+              logo do site ({DEFAULT_LOGO_PATH}).
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <div className="flex h-20 min-w-[120px] flex-1 items-center justify-center rounded-lg border border-dashed border-border bg-background p-2">
+                {draft.logo_base64 ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={draft.logo_base64}
+                    alt="Logo da empresa"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={DEFAULT_LOGO_PATH}
+                    alt="Logo padrão do site"
+                    className="max-h-full max-w-full object-contain opacity-70"
+                  />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={logoRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="hidden"
+                  onChange={onLogoFile}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logoRef.current?.click()}
+                >
+                  <Upload />
+                  Enviar logo
+                </Button>
+                {draft.logo_base64 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={removerLogo}
+                  >
+                    <X />
+                    Usar logo do site
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
