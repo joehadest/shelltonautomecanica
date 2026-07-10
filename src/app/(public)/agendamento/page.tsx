@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -433,14 +434,14 @@ export default function AgendamentoPage() {
                   </Label>
                   <div className="relative">
                     <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                    <MaskedInput
                       id="telefone"
+                      mask="phone"
                       type="tel"
-                      inputMode="tel"
                       placeholder="(11) 99999-0000"
                       className="pl-9"
                       value={form.telefone}
-                      onChange={(e) => update("telefone", e.target.value)}
+                      onValueChange={(v) => update("telefone", v)}
                     />
                   </div>
                 </div>
@@ -451,12 +452,13 @@ export default function AgendamentoPage() {
                   </Label>
                   <div className="relative">
                     <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                    <MaskedInput
                       id="placa"
+                      mask="placa"
                       placeholder="ABC1D23"
-                      className="pl-9 uppercase"
+                      className="pl-9"
                       value={form.placa}
-                      onChange={(e) => update("placa", e.target.value)}
+                      onValueChange={(v) => update("placa", v)}
                     />
                   </div>
                 </div>

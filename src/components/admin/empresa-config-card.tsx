@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { useDB, empresaApi } from "@/lib/store";
 import { resolveEmpresa } from "@/lib/empresa-defaults";
 import { DEFAULT_LOGO_PATH } from "@/lib/empresa-logo";
+import { maskCnpj, maskPhone } from "@/lib/masks";
 import type { ConfiguracaoEmpresa } from "@/lib/types";
 
 type EmpresaDraft = Omit<
@@ -27,11 +29,11 @@ function toDraft(empresa: ConfiguracaoEmpresa): EmpresaDraft {
   return {
     razao_social: empresa.razao_social,
     nome_fantasia: empresa.nome_fantasia,
-    cnpj: empresa.cnpj,
+    cnpj: maskCnpj(empresa.cnpj),
     inscricao_estadual: empresa.inscricao_estadual,
     endereco: empresa.endereco,
     cidade_uf: empresa.cidade_uf,
-    telefone: empresa.telefone,
+    telefone: maskPhone(empresa.telefone),
     email: empresa.email,
     logo_base64: empresa.logo_base64,
     assinatura_base64: empresa.assinatura_base64,
@@ -179,10 +181,11 @@ export function EmpresaConfigCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-cnpj">CNPJ</Label>
-              <Input
+              <MaskedInput
                 id="emp-cnpj"
+                mask="cnpj"
                 value={draft.cnpj}
-                onChange={(e) => update("cnpj", e.target.value)}
+                onValueChange={(v) => update("cnpj", v)}
                 placeholder="00.000.000/0001-00"
               />
             </div>
@@ -214,10 +217,12 @@ export function EmpresaConfigCard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-tel">Telefone</Label>
-              <Input
+              <MaskedInput
                 id="emp-tel"
+                mask="phone"
+                placeholder="(11) 99999-0000"
                 value={draft.telefone}
-                onChange={(e) => update("telefone", e.target.value)}
+                onValueChange={(v) => update("telefone", v)}
               />
             </div>
             <div className="space-y-2 sm:col-span-2">

@@ -268,3 +268,15 @@ body {
   background: var(--border);
   border-radius: 9999px;
 }
+
+/* Admin em viewport ~720px no mobile */
+html.admin-desktop-viewport,
+body.admin-desktop-viewport {
+  overflow-x: auto !important;
+  max-width: none !important;
+}
+
+.admin-shell {
+  min-width: 720px;
+  width: 100%;
+}

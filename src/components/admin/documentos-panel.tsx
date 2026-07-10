@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,10 @@ import { resolveEmpresa } from "@/lib/empresa-defaults";
 import { EmpresaConfigCard } from "@/components/admin/empresa-config-card";
 import type { ConfiguracaoEmpresa } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
+import {
+  currencyToNumber,
+  numberToCurrencyMask,
+} from "@/lib/masks";
 import {
   AGENDAMENTO_STATUS_LABEL,
   type Agendamento,
@@ -95,13 +100,19 @@ function ItemTablePreview({
         {titulo}
       </p>
       <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-left text-xs">
+        <table className="w-full table-fixed text-left text-xs">
           <thead>
             <tr className="bg-primary text-primary-foreground">
-              <th className="px-3 py-2 font-semibold">Descrição</th>
-              <th className="px-2 py-2 text-center font-semibold">Qtd.</th>
-              <th className="px-2 py-2 text-right font-semibold">Unit.</th>
-              <th className="px-3 py-2 text-right font-semibold">Subtotal</th>
+              <th className="px-2 py-2 font-semibold sm:px-3">Descrição</th>
+              <th className="w-12 px-1 py-2 text-center font-semibold sm:w-14">
+                Qtd.
+              </th>
+              <th className="w-16 px-1 py-2 text-right font-semibold sm:w-20">
+                Unit.
+              </th>
+              <th className="w-20 px-2 py-2 text-right font-semibold sm:px-3">
+                Subtotal
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -120,16 +131,16 @@ function ItemTablePreview({
                     idx % 2 === 0 ? "bg-background" : "bg-secondary/30"
                   )}
                 >
-                  <td className="px-3 py-2 text-foreground">
+                  <td className="break-words px-2 py-2 text-foreground sm:px-3">
                     {item.descricao}
                   </td>
-                  <td className="px-2 py-2 text-center text-muted-foreground">
+                  <td className="px-1 py-2 text-center text-muted-foreground">
                     {item.quantidade}
                   </td>
-                  <td className="px-2 py-2 text-right text-muted-foreground">
+                  <td className="px-1 py-2 text-right text-muted-foreground">
                     {formatCurrency(item.valorUnitario)}
                   </td>
-                  <td className="px-3 py-2 text-right font-medium text-foreground">
+                  <td className="px-2 py-2 text-right font-medium text-foreground sm:px-3">
                     {formatCurrency(itemSubtotal(item))}
                   </td>
                 </tr>
@@ -140,11 +151,11 @@ function ItemTablePreview({
             <tr className="border-t border-border bg-secondary/40">
               <td
                 colSpan={3}
-                className="px-3 py-2 text-right text-xs font-medium text-muted-foreground"
+                className="px-2 py-2 text-right text-xs font-medium text-muted-foreground sm:px-3"
               >
                 Subtotal {titulo.toLowerCase()}
               </td>
-              <td className="px-3 py-2 text-right text-xs font-bold text-foreground">
+              <td className="px-2 py-2 text-right text-xs font-bold text-foreground sm:px-3">
                 {formatCurrency(subtotal)}
               </td>
             </tr>
@@ -166,9 +177,9 @@ function DocumentPreview({
     calcularTotais(draft);
 
   return (
-    <div className="rounded-xl border border-border bg-background p-5 font-mono text-xs leading-relaxed shadow-inner">
-      <div className="rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-        <div className="flex items-start justify-between gap-3">
+    <div className="overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
+      <div className="rounded-lg bg-primary px-3 py-3 text-primary-foreground sm:px-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -176,7 +187,7 @@ function DocumentPreview({
               alt="Logo"
               className="size-12 shrink-0 rounded-md bg-white/10 object-contain p-1"
             />
-            <div className="min-w-0">
+            <div className="min-w-0 break-words">
               <p className="text-sm font-bold uppercase tracking-wide">
                 {empresa.nome_fantasia}
               </p>
@@ -196,14 +207,12 @@ function DocumentPreview({
               </p>
             </div>
           </div>
-          <div className="shrink-0 text-right">
+          <div className="shrink-0 sm:text-right">
             <p className="text-[10px] font-bold uppercase">
               {DOCUMENTO_TIPO_LABEL[draft.tipo]}
             </p>
             <p className="mt-1 text-[9px] opacity-80">
-              Documento informativo
-              <br />
-              sem valor fiscal
+              Documento informativo — sem valor fiscal
             </p>
           </div>
         </div>
@@ -394,28 +403,26 @@ function ItensEditor({
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Qtd.</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={item.quantidade}
-                      onChange={(e) =>
+                    <MaskedInput
+                      mask="digits"
+                      maxLength={4}
+                      value={String(item.quantidade || "")}
+                      onValueChange={(v) =>
                         onUpdate(item.id, {
-                          quantidade: parseInt(e.target.value, 10) || 1,
+                          quantidade: parseInt(v, 10) || 1,
                         })
                       }
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Valor unit. (R$)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={item.valorUnitario || ""}
-                      onChange={(e) =>
+                    <MaskedInput
+                      mask="currency"
+                      placeholder="0,00"
+                      value={numberToCurrencyMask(item.valorUnitario)}
+                      onValueChange={(v) =>
                         onUpdate(item.id, {
-                          valorUnitario: parseFloat(e.target.value) || 0,
+                          valorUnitario: currencyToNumber(v),
                         })
                       }
                     />
@@ -594,9 +601,9 @@ export function DocumentosPanel() {
 
       <EmpresaConfigCard />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(280px,320px)_1fr]">
         {/* Lista de pedidos */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="grid gap-2">
             <Button
               type="button"
@@ -762,9 +769,9 @@ export function DocumentosPanel() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
               {/* Formulário */}
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Dados do cliente</CardTitle>
@@ -788,14 +795,14 @@ export function DocumentosPanel() {
                       <Label htmlFor="doc-tel">WhatsApp</Label>
                       <div className="relative">
                         <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
+                        <MaskedInput
                           id="doc-tel"
+                          mask="phone"
                           type="tel"
                           className="pl-9"
+                          placeholder="(11) 99999-0000"
                           value={draft.telefone}
-                          onChange={(e) =>
-                            updateDraft("telefone", e.target.value)
-                          }
+                          onValueChange={(v) => updateDraft("telefone", v)}
                         />
                       </div>
                     </div>
@@ -816,13 +823,12 @@ export function DocumentosPanel() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="doc-placa">Placa</Label>
-                        <Input
+                        <MaskedInput
                           id="doc-placa"
-                          className="uppercase"
+                          mask="placa"
+                          placeholder="ABC1D23"
                           value={draft.placa}
-                          onChange={(e) =>
-                            updateDraft("placa", e.target.value)
-                          }
+                          onValueChange={(v) => updateDraft("placa", v)}
                         />
                       </div>
                     </div>
@@ -859,17 +865,13 @@ export function DocumentosPanel() {
                   <CardContent className="space-y-3">
                     <div className="space-y-2">
                       <Label htmlFor="doc-desconto">Desconto (R$)</Label>
-                      <Input
+                      <MaskedInput
                         id="doc-desconto"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={draft.desconto || ""}
-                        onChange={(e) =>
-                          updateDraft(
-                            "desconto",
-                            parseFloat(e.target.value) || 0
-                          )
+                        mask="currency"
+                        placeholder="0,00"
+                        value={numberToCurrencyMask(draft.desconto)}
+                        onValueChange={(v) =>
+                          updateDraft("desconto", currencyToNumber(v))
                         }
                       />
                     </div>
@@ -926,10 +928,10 @@ export function DocumentosPanel() {
               </div>
 
               {/* Pré-visualização + envio */}
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <div>
+              <div className="min-w-0 space-y-4">
+                <Card className="overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+                    <div className="min-w-0">
                       <CardTitle className="text-base">Pré-visualização</CardTitle>
                       <CardDescription>
                         Prévia do PDF em formato de planilha.
@@ -946,7 +948,7 @@ export function DocumentosPanel() {
                     </Button>
                   </CardHeader>
                   {showPreview && (
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                       <DocumentPreview draft={draft} empresa={empresa} />
                     </CardContent>
                   )}
@@ -991,10 +993,7 @@ export function DocumentosPanel() {
                           onClick={() => void enviarWhatsApp()}
                         >
                           <Send className="size-4 shrink-0" />
-                          <span className="sm:hidden">Enviar PDF no WhatsApp</span>
-                          <span className="hidden sm:inline">
-                            Enviar PDF no WhatsApp
-                          </span>
+                          Enviar PDF no WhatsApp
                         </Button>
                       </div>
                     </div>

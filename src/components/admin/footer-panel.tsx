@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDB, footerApi } from "@/lib/store";
 import { resolveFooter } from "@/lib/footer-defaults";
+import { maskPhone } from "@/lib/masks";
 import type { FooterConfig } from "@/lib/types";
 
 type FooterDraft = Omit<FooterConfig, "id" | "updated_at">;
@@ -24,7 +26,7 @@ function toDraft(footer: FooterConfig): FooterDraft {
   return {
     slogan: footer.slogan,
     endereco: footer.endereco,
-    telefone: footer.telefone,
+    telefone: maskPhone(footer.telefone),
     horario: footer.horario,
     instagram: footer.instagram,
     instagram_url: footer.instagram_url,
@@ -109,10 +111,12 @@ export function FooterPanel() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone / WhatsApp</Label>
-              <Input
+              <MaskedInput
                 id="telefone"
+                mask="phone"
+                placeholder="(11) 99999-0000"
                 value={draft.telefone}
-                onChange={(e) => update("telefone", e.target.value)}
+                onValueChange={(v) => update("telefone", v)}
               />
             </div>
             <div className="space-y-2">

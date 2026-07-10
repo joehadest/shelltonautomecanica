@@ -91,7 +91,7 @@ export function AgendamentosPanel() {
             </p>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 3xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 3xl:grid-cols-3">
             {pendentes.map((a) => (
               <Card key={a.id} className="border-amber-500/30">
                 <CardHeader className="pb-3">

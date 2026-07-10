@@ -35,16 +35,31 @@ type Tab =
   | "config"
   | "documentos";
 
-const TABS: { id: Tab; label: string; icon: typeof CalendarClock }[] = [
-  { id: "visao", label: "Visão geral", icon: LayoutDashboard },
-  { id: "agendamentos", label: "Agendamentos", icon: CalendarClock },
-  { id: "fila", label: "Fila virtual", icon: ListOrdered },
-  { id: "agenda", label: "Agenda e vagas", icon: CalendarCog },
-  { id: "portfolio", label: "Portfólio", icon: LayoutGrid },
-  { id: "documentos", label: "Orçamentos", icon: FileText },
-  { id: "estatisticas", label: "Números do site", icon: BarChart3 },
-  { id: "footer", label: "Rodapé", icon: PanelBottom },
-  { id: "config", label: "Configurações", icon: Settings },
+const TABS: {
+  id: Tab;
+  label: string;
+  shortLabel: string;
+  icon: typeof CalendarClock;
+}[] = [
+  { id: "visao", label: "Visão geral", shortLabel: "Visão", icon: LayoutDashboard },
+  {
+    id: "agendamentos",
+    label: "Agendamentos",
+    shortLabel: "Agenda",
+    icon: CalendarClock,
+  },
+  { id: "fila", label: "Fila virtual", shortLabel: "Fila", icon: ListOrdered },
+  { id: "agenda", label: "Agenda e vagas", shortLabel: "Vagas", icon: CalendarCog },
+  { id: "portfolio", label: "Portfólio", shortLabel: "Serviços", icon: LayoutGrid },
+  { id: "documentos", label: "Orçamentos", shortLabel: "Orçamentos", icon: FileText },
+  {
+    id: "estatisticas",
+    label: "Números do site",
+    shortLabel: "Números",
+    icon: BarChart3,
+  },
+  { id: "footer", label: "Rodapé", shortLabel: "Rodapé", icon: PanelBottom },
+  { id: "config", label: "Configurações", shortLabel: "Config", icon: Settings },
 ];
 
 export default function DashboardPage() {
@@ -55,7 +70,7 @@ export default function DashboardPage() {
   const listaEspera = getListaEspera(agendamentos).length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl 3xl:max-w-[1920px] px-4 py-8">
+    <div className="mx-auto w-full max-w-7xl 3xl:max-w-[1920px] px-4 py-6 sm:py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Painel de gerenciamento
@@ -65,44 +80,48 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1">
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          const badge =
-            t.id === "agendamentos" && pendentes > 0
-              ? pendentes
-              : t.id === "fila" && listaEspera > 0
-                ? listaEspera
-                : null;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "relative flex flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <t.icon className="size-4" />
-              <span className="hidden sm:inline">{t.label}</span>
-              {badge && (
-                <span
-                  className={cn(
-                    "ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                    active
-                      ? "bg-primary-foreground text-primary"
-                      : "bg-primary text-primary-foreground"
-                  )}
-                >
-                  {badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Tabs — rolagem horizontal, botões grandes (ideal ~720px) */}
+      <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">
+        <div className="inline-flex min-w-full gap-2 rounded-xl border border-border bg-card p-2">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            const badge =
+              t.id === "agendamentos" && pendentes > 0
+                ? pendentes
+                : t.id === "fila" && listaEspera > 0
+                  ? listaEspera
+                  : null;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                title={t.label}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "relative flex h-12 min-w-[7.5rem] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <t.icon className="size-5 shrink-0" />
+                <span>{t.shortLabel}</span>
+                {badge != null && (
+                  <span
+                    className={cn(
+                      "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none",
+                      active
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    )}
+                  >
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Conteúdo */}

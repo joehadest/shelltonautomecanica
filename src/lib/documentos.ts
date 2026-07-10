@@ -1,4 +1,5 @@
 import { generateId } from "@/lib/utils";
+import { maskPhone, maskPlaca } from "@/lib/masks";
 import type { Agendamento } from "@/lib/types";
 
 export type DocumentoTipo = "orcamento" | "recibo";
@@ -103,9 +104,9 @@ export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
   return {
     tipo,
     clienteNome: a.cliente_nome,
-    telefone: a.telefone,
+    telefone: maskPhone(a.telefone),
     modelo: a.modelo,
-    placa: a.placa,
+    placa: maskPlaca(a.placa),
     maoDeObra: [createEmptyItem(a.servico_nome)],
     produtos: [],
     desconto: 0,

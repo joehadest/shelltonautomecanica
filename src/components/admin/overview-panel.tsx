@@ -111,7 +111,7 @@ export function OverviewPanel() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         {/* Atividade recente */}
         <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
