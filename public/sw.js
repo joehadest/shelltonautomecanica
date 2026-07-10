@@ -13,8 +13,8 @@ self.addEventListener("push", function (event) {
   const title = data.title || "Shellton Auto Mecânica";
   const options = {
     body: data.body || "Você tem uma nova notificação.",
-    icon: data.icon || "/favicon/favicon-for-public/web-app-manifest-192x192.png",
-    badge: "/favicon/favicon-for-public/web-app-manifest-192x192.png",
+    icon: data.icon || "/web-app-manifest-192x192.png",
+    badge: "/web-app-manifest-192x192.png",
     vibrate: [120, 60, 120],
     tag: data.tag || "shellton-notify",
     renotify: true,

@@ -27,16 +27,8 @@ export const metadata: Metadata = {
     "alinhamento",
     "agendamento",
   ],
-  icons: {
-    icon: [
-      { url: "/favicon/favicon-for-app/icon1.png", type: "image/png" },
-      { url: "/favicon/favicon-for-app/icon0.svg", type: "image/svg+xml" },
-    ],
-    apple: "/favicon/favicon-for-app/apple-icon.png",
-  },
   appleWebApp: {
     capable: true,
-    title: "Shellton",
     statusBarStyle: "black-translucent",
   },
 };
@@ -51,6 +43,9 @@ export default function RootLayout({
       lang="pt-BR"
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="apple-mobile-web-app-title" content="Shellton" />
+      </head>
       <body className="min-h-full max-w-full overflow-x-clip flex flex-col bg-background text-foreground">
         {children}
         <Toaster
