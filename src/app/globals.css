@@ -269,14 +269,17 @@ body {
   border-radius: 9999px;
 }
 
-/* Admin em viewport ~720px no mobile */
-html.admin-desktop-viewport,
-body.admin-desktop-viewport {
-  overflow-x: auto !important;
-  max-width: none !important;
+/* Admin — largura do dispositivo, sem estourar laterais no mobile */
+.admin-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
-.admin-shell {
-  min-width: 720px;
-  width: 100%;
+.admin-shell *,
+.admin-shell *::before,
+.admin-shell *::after {
+  box-sizing: border-box;
 }

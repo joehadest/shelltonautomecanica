@@ -406,12 +406,20 @@ function ItensEditor({
                     <MaskedInput
                       mask="digits"
                       maxLength={4}
-                      value={String(item.quantidade || "")}
+                      value={item.quantidade > 0 ? String(item.quantidade) : ""}
+                      placeholder="1"
                       onValueChange={(v) =>
                         onUpdate(item.id, {
-                          quantidade: parseInt(v, 10) || 1,
+                          quantidade:
+                            v === "" ? 0 : Math.max(0, parseInt(v, 10) || 0),
                         })
                       }
+                      onBlur={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        if (!e.target.value || !Number.isFinite(n) || n <= 0) {
+                          onUpdate(item.id, { quantidade: 1 });
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-1">
@@ -588,12 +596,12 @@ export function DocumentosPanel() {
   const totais = draft ? calcularTotais(draft) : null;
 
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+      <div className="min-w-0">
         <h2 className="text-lg font-semibold text-foreground">
           Orçamentos e Recibos
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm break-words text-muted-foreground">
           Selecione um pedido do site ou crie um orçamento manual para clientes
           avulsos. Gere o PDF e envie pelo WhatsApp.
         </p>
@@ -601,7 +609,7 @@ export function DocumentosPanel() {
 
       <EmpresaConfigCard />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,320px)_1fr]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
         {/* Lista de pedidos */}
         <div className="min-w-0 space-y-3">
           <div className="grid gap-2">
@@ -631,10 +639,12 @@ export function DocumentosPanel() {
               className="w-full cursor-pointer rounded-xl border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary/30"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium text-foreground">
+                <p className="min-w-0 flex-1 break-words font-medium text-foreground">
                   {draft.clienteNome.trim() || "Documento avulso"}
                 </p>
-                <Badge variant="secondary">Manual</Badge>
+                <Badge variant="secondary" className="shrink-0">
+                  Manual
+                </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {DOCUMENTO_TIPO_LABEL[draft.tipo]} · preencha os dados ao lado
@@ -678,10 +688,12 @@ export function DocumentosPanel() {
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-foreground">
+                      <p className="min-w-0 flex-1 break-words font-medium text-foreground">
                         {a.cliente_nome}
                       </p>
-                      <StatusBadge status={a.status} />
+                      <div className="shrink-0">
+                        <StatusBadge status={a.status} />
+                      </div>
                     </div>
                     <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Phone className="size-3.5 text-primary" />

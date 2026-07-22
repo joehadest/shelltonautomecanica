@@ -51,7 +51,7 @@ const TABS: {
   { id: "fila", label: "Fila virtual", shortLabel: "Fila", icon: ListOrdered },
   { id: "agenda", label: "Agenda e vagas", shortLabel: "Vagas", icon: CalendarCog },
   { id: "portfolio", label: "Portfólio", shortLabel: "Serviços", icon: LayoutGrid },
-  { id: "documentos", label: "Orçamentos", shortLabel: "Orçamentos", icon: FileText },
+  { id: "documentos", label: "Orçamentos", shortLabel: "Orçam.", icon: FileText },
   {
     id: "estatisticas",
     label: "Números do site",
@@ -70,62 +70,64 @@ export default function DashboardPage() {
   const listaEspera = getListaEspera(agendamentos).length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl 3xl:max-w-[1920px] px-4 py-6 sm:py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <div className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8 3xl:max-w-[1920px]">
+      <div className="mb-5 min-w-0 sm:mb-6">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           Painel de gerenciamento
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Controle agendamentos, fila e portfólio em tempo real.
         </p>
       </div>
 
-      {/* Tabs — rolagem horizontal, botões grandes (ideal ~720px) */}
-      <div className="mb-6 -mx-1 overflow-x-auto px-1 pb-1">
-        <div className="inline-flex min-w-full gap-2 rounded-xl border border-border bg-card p-2">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            const badge =
-              t.id === "agendamentos" && pendentes > 0
-                ? pendentes
-                : t.id === "fila" && listaEspera > 0
-                  ? listaEspera
-                  : null;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                title={t.label}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "relative flex h-12 min-w-[7.5rem] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <t.icon className="size-5 shrink-0" />
-                <span>{t.shortLabel}</span>
-                {badge != null && (
-                  <span
-                    className={cn(
-                      "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none",
-                      active
-                        ? "bg-primary-foreground text-primary"
-                        : "bg-primary text-primary-foreground"
-                    )}
-                  >
-                    {badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      {/* Tabs — scroll horizontal contido (não amplia a página) */}
+      <div className="mb-5 min-w-0 max-w-full sm:mb-6">
+        <div className="overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-1.5 rounded-xl border border-border bg-card p-1.5 sm:gap-2 sm:p-2">
+            {TABS.map((t) => {
+              const active = tab === t.id;
+              const badge =
+                t.id === "agendamentos" && pendentes > 0
+                  ? pendentes
+                  : t.id === "fila" && listaEspera > 0
+                    ? listaEspera
+                    : null;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  title={t.label}
+                  onClick={() => setTab(t.id)}
+                  className={cn(
+                    "relative flex h-11 min-w-[3.75rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[11px] font-semibold transition-colors sm:h-12 sm:min-w-[7rem] sm:flex-row sm:gap-2 sm:px-4 sm:text-sm",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-secondary/40 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <t.icon className="size-4 shrink-0 sm:size-5" />
+                  <span className="leading-none">{t.shortLabel}</span>
+                  {badge != null && (
+                    <span
+                      className={cn(
+                        "absolute right-0.5 top-0.5 inline-flex min-w-4 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold leading-none sm:static sm:min-w-5 sm:px-1.5 sm:text-[11px]",
+                        active
+                          ? "bg-primary-foreground text-primary"
+                          : "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Conteúdo */}
-      <div className="animate-fade-in">
+      <div className="min-w-0 max-w-full animate-fade-in">
         {tab === "visao" && <OverviewPanel />}
         {tab === "agendamentos" && <AgendamentosPanel />}
         {tab === "fila" && <FilaPanel />}

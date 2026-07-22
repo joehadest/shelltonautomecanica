@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { AdminDesktopViewport } from "@/components/admin/admin-desktop-viewport";
 
 export const metadata: Metadata = {
   title: "Admin",
 };
 
-/** Viewport otimizado para ~720px (mobile legível, cards e abas confortáveis). */
 export const viewport: Viewport = {
-  width: 720,
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function AdminLayout({
@@ -16,9 +16,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <AdminDesktopViewport />
-      <div className="admin-shell">{children}</div>
-    </>
+    <div className="admin-shell min-h-full w-full min-w-0 max-w-full overflow-x-hidden">
+      {children}
+    </div>
   );
 }

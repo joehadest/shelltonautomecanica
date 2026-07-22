@@ -136,12 +136,12 @@ export function EmpresaConfigCard() {
         onClick={() => setOpen((v) => !v)}
       >
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="size-4 text-primary" />
+              <Building2 className="size-4 shrink-0 text-primary" />
               Dados da empresa (PDF)
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="mt-1.5 break-words">
               CNPJ, endereço e assinatura exibidos no cabeçalho e rodapé dos
               documentos.
             </CardDescription>
@@ -150,6 +150,7 @@ export function EmpresaConfigCard() {
             type="button"
             variant="ghost"
             size="sm"
+            className="shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               setOpen((v) => !v);
