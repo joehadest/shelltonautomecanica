@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   FileText,
@@ -338,6 +338,7 @@ function ItensEditor({
   onRemove,
   placeholder,
   allowEmpty,
+  scrollToItemId,
 }: {
   titulo: string;
   descricao: string;
@@ -348,7 +349,40 @@ function ItensEditor({
   onRemove: (id: string) => void;
   placeholder: string;
   allowEmpty?: boolean;
+  scrollToItemId?: string;
 }) {
+  const [valoresEditados, setValoresEditados] = useState<Record<string, string>>(
+    () =>
+      Object.fromEntries(
+        itens.map((item) => [item.id, numberToCurrencyMask(item.valorUnitario)])
+      )
+  );
+
+  useEffect(() => {
+    setValoresEditados((current) => {
+      const ids = new Set(itens.map((item) => item.id));
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([id]) => ids.has(id))
+      );
+
+      for (const item of itens) {
+        if (!(item.id in next)) {
+          next[item.id] = numberToCurrencyMask(item.valorUnitario);
+        }
+      }
+      return next;
+    });
+  }, [itens]);
+
+  useEffect(() => {
+    if (!scrollToItemId) return;
+    const card = document.getElementById(`item-card-${scrollToItemId}`);
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.querySelector<HTMLInputElement>("input")?.focus();
+  }, [scrollToItemId, itens]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -373,6 +407,7 @@ function ItensEditor({
           itens.map((item, idx) => (
             <div
               key={item.id}
+              id={`item-card-${item.id}`}
               className="rounded-lg border border-border bg-secondary/20 p-3"
             >
               <div className="mb-2 flex items-center justify-between">
@@ -427,11 +462,24 @@ function ItensEditor({
                     <MaskedInput
                       mask="currency"
                       placeholder="0,00"
-                      value={numberToCurrencyMask(item.valorUnitario)}
-                      onValueChange={(v) =>
+                      value={
+                        valoresEditados[item.id] ??
+                        numberToCurrencyMask(item.valorUnitario)
+                      }
+                      onValueChange={(v) => {
+                        setValoresEditados((current) => ({
+                          ...current,
+                          [item.id]: v,
+                        }));
                         onUpdate(item.id, {
                           valorUnitario: currencyToNumber(v),
-                        })
+                        });
+                      }}
+                      onBlur={() =>
+                        setValoresEditados((current) => ({
+                          ...current,
+                          [item.id]: numberToCurrencyMask(item.valorUnitario),
+                        }))
                       }
                     />
                   </div>
@@ -466,6 +514,10 @@ export function DocumentosPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DocumentoDraft | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [novoItem, setNovoItem] = useState<{
+    lista: ItemLista;
+    id: string;
+  } | null>(null);
 
   const elegiveis = useMemo(
     () =>
@@ -528,8 +580,10 @@ export function DocumentosPanel() {
   }
 
   function addItem(lista: ItemLista) {
+    const item = createEmptyItem();
+    setNovoItem({ lista, id: item.id });
     setDraft((d) =>
-      d ? { ...d, [lista]: [...d[lista], createEmptyItem()] } : d
+      d ? { ...d, [lista]: [...d[lista], item] } : d
     );
   }
 
@@ -856,6 +910,9 @@ export function DocumentosPanel() {
                   onUpdate={(id, patch) => updateItem("maoDeObra", id, patch)}
                   onRemove={(id) => removeItem("maoDeObra", id)}
                   placeholder="Ex.: Troca de óleo, alinhamento, revisão"
+                  scrollToItemId={
+                    novoItem?.lista === "maoDeObra" ? novoItem.id : undefined
+                  }
                 />
 
                 <ItensEditor
@@ -868,6 +925,9 @@ export function DocumentosPanel() {
                   onRemove={(id) => removeItem("produtos", id)}
                   placeholder="Ex.: Filtro de óleo, pastilha de freio"
                   allowEmpty
+                  scrollToItemId={
+                    novoItem?.lista === "produtos" ? novoItem.id : undefined
+                  }
                 />
 
                 <Card>
