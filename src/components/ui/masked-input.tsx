@@ -42,6 +42,9 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
         ref={ref}
         type={type}
         inputMode={inputMode ?? maskInputMode(mask)}
+        // pt-BR: teclado decimal no mobile tende a exibir vírgula; ponto também é aceito na máscara.
+        lang={mask === "currency" ? "pt-BR" : undefined}
+        autoComplete={mask === "currency" ? "off" : undefined}
         maxLength={maxLength ?? defaults[mask]}
         className={cn(mask === "placa" && "uppercase", className)}
         value={value}

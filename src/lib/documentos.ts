@@ -74,11 +74,6 @@ export function createEmptyItem(descricao = ""): DocumentoItem {
 }
 
 export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDraft {
-  const observacoesPadrao =
-    tipo === "orcamento"
-      ? "Orçamento válido por 7 dias. Valores sujeitos a alteração após diagnóstico presencial."
-      : "Serviço executado conforme descrito. Garantia de 90 dias para mão de obra.";
-
   return {
     tipo,
     clienteNome: "",
@@ -88,18 +83,13 @@ export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDr
     maoDeObra: [createEmptyItem()],
     produtos: [],
     desconto: 0,
-    observacoes: observacoesPadrao,
+    observacoes: "",
   };
 }
 
 export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
   const tipo: DocumentoTipo =
     a.status === "aprovado" ? "recibo" : "orcamento";
-
-  const observacoesPadrao =
-    tipo === "orcamento"
-      ? "Orçamento válido por 7 dias. Valores sujeitos a alteração após diagnóstico presencial."
-      : "Serviço executado conforme descrito. Garantia de 90 dias para mão de obra.";
 
   return {
     tipo,
@@ -110,7 +100,7 @@ export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
     maoDeObra: [createEmptyItem(a.servico_nome)],
     produtos: [],
     desconto: 0,
-    observacoes: a.observacoes?.trim() || observacoesPadrao,
+    observacoes: a.observacoes?.trim() || "",
   };
 }
 

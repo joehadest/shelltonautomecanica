@@ -374,6 +374,7 @@ function ItensEditor({
     });
   }, [itens]);
 
+  // Depende só do id do item novo — incluir `itens` refocava a descrição a cada tecla.
   useEffect(() => {
     if (!scrollToItemId) return;
     const card = document.getElementById(`item-card-${scrollToItemId}`);
@@ -381,7 +382,7 @@ function ItensEditor({
 
     card.scrollIntoView({ behavior: "smooth", block: "center" });
     card.querySelector<HTMLInputElement>("input")?.focus();
-  }, [scrollToItemId, itens]);
+  }, [scrollToItemId]);
 
   return (
     <Card>
@@ -476,10 +477,15 @@ function ItensEditor({
                         });
                       }}
                       onBlur={() =>
-                        setValoresEditados((current) => ({
-                          ...current,
-                          [item.id]: numberToCurrencyMask(item.valorUnitario),
-                        }))
+                        setValoresEditados((current) => {
+                          const raw = current[item.id] ?? "";
+                          return {
+                            ...current,
+                            [item.id]: numberToCurrencyMask(
+                              currencyToNumber(raw)
+                            ),
+                          };
+                        })
                       }
                     />
                   </div>
@@ -518,6 +524,13 @@ export function DocumentosPanel() {
     lista: ItemLista;
     id: string;
   } | null>(null);
+
+  // Libera o id após o ItensEditor focar o card (evita re-foco em re-renders).
+  useEffect(() => {
+    if (!novoItem) return;
+    const t = window.setTimeout(() => setNovoItem(null), 0);
+    return () => window.clearTimeout(t);
+  }, [novoItem]);
 
   const elegiveis = useMemo(
     () =>
@@ -993,7 +1006,6 @@ export function DocumentosPanel() {
                       onChange={(e) =>
                         updateDraft("observacoes", e.target.value)
                       }
-                      placeholder="Ex.: Orçamento válido por 7 dias. Garantia de 90 dias na mão de obra."
                     />
                   </CardContent>
                 </Card>
