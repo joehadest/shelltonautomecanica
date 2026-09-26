@@ -99,18 +99,18 @@ function ItemTablePreview({
       <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">
         {titulo}
       </p>
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full table-fixed text-left text-xs">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[320px] table-fixed text-left text-xs">
           <thead>
             <tr className="bg-primary text-primary-foreground">
-              <th className="px-2 py-2 font-semibold sm:px-3">Descrição</th>
-              <th className="w-12 px-1 py-2 text-center font-semibold sm:w-14">
+              <th className="px-2 py-2 font-semibold">Descrição</th>
+              <th className="w-11 px-1 py-2 text-center font-semibold">
                 Qtd.
               </th>
-              <th className="w-16 px-1 py-2 text-right font-semibold sm:w-20">
+              <th className="w-16 px-1 py-2 text-right font-semibold">
                 Unit.
               </th>
-              <th className="w-20 px-2 py-2 text-right font-semibold sm:px-3">
+              <th className="w-[4.5rem] px-2 py-2 text-right font-semibold">
                 Subtotal
               </th>
             </tr>
@@ -131,7 +131,7 @@ function ItemTablePreview({
                     idx % 2 === 0 ? "bg-background" : "bg-secondary/30"
                   )}
                 >
-                  <td className="break-words px-2 py-2 text-foreground sm:px-3">
+                  <td className="break-words px-2 py-2 text-foreground">
                     {item.descricao}
                   </td>
                   <td className="px-1 py-2 text-center text-muted-foreground">
@@ -140,7 +140,7 @@ function ItemTablePreview({
                   <td className="px-1 py-2 text-right text-muted-foreground">
                     {formatCurrency(item.valorUnitario)}
                   </td>
-                  <td className="px-2 py-2 text-right font-medium text-foreground sm:px-3">
+                  <td className="px-2 py-2 text-right font-medium text-foreground">
                     {formatCurrency(itemSubtotal(item))}
                   </td>
                 </tr>
@@ -151,11 +151,11 @@ function ItemTablePreview({
             <tr className="border-t border-border bg-secondary/40">
               <td
                 colSpan={3}
-                className="px-2 py-2 text-right text-xs font-medium text-muted-foreground sm:px-3"
+                className="px-2 py-2 text-right text-xs font-medium text-muted-foreground"
               >
                 Subtotal {titulo.toLowerCase()}
               </td>
-              <td className="px-2 py-2 text-right text-xs font-bold text-foreground sm:px-3">
+              <td className="px-2 py-2 text-right text-xs font-bold text-foreground">
                 {formatCurrency(subtotal)}
               </td>
             </tr>
@@ -177,9 +177,9 @@ function DocumentPreview({
     calcularTotais(draft);
 
   return (
-    <div className="mx-auto w-full max-w-[440px] overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
+    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
       <div className="rounded-lg bg-primary px-3 py-3 text-primary-foreground sm:px-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3">
           <div className="flex min-w-0 items-start gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -207,7 +207,7 @@ function DocumentPreview({
               </p>
             </div>
           </div>
-          <div className="shrink-0 sm:text-right">
+          <div className="shrink-0">
             <p className="text-[10px] font-bold uppercase">
               {DOCUMENTO_TIPO_LABEL[draft.tipo]}
             </p>
@@ -848,7 +848,7 @@ export function DocumentosPanel() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] xl:items-start">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] xl:items-start">
               {/* Formulário */}
               <div className="min-w-0 space-y-4">
                 <Card>
