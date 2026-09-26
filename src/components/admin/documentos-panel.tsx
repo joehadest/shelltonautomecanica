@@ -177,7 +177,7 @@ function DocumentPreview({
     calcularTotais(draft);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
+    <div className="mx-auto w-full max-w-[440px] overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
       <div className="rounded-lg bg-primary px-3 py-3 text-primary-foreground sm:px-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
@@ -676,9 +676,9 @@ export function DocumentosPanel() {
 
       <EmpresaConfigCard />
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
         {/* Lista de pedidos */}
-        <div className="min-w-0 space-y-3">
+        <div className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:self-start">
           <div className="grid gap-2">
             <Button
               type="button"
@@ -739,7 +739,7 @@ export function DocumentosPanel() {
               </p>
             </Card>
           ) : filtrados.length > 0 ? (
-            <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[calc(100dvh-16rem)] space-y-2 overflow-y-auto pr-1">
               {filtrados.map((a) => {
                 const active = selectedId === a.id;
                 return (
@@ -848,7 +848,7 @@ export function DocumentosPanel() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] xl:items-start">
               {/* Formulário */}
               <div className="min-w-0 space-y-4">
                 <Card>
@@ -1012,7 +1012,7 @@ export function DocumentosPanel() {
               </div>
 
               {/* Pré-visualização + envio */}
-              <div className="min-w-0 space-y-4">
+              <div className="min-w-0 space-y-4 xl:sticky xl:top-20 xl:max-h-[calc(100dvh-5.5rem)] xl:self-start xl:overflow-y-auto">
                 <Card className="overflow-hidden">
                   <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
                     <div className="min-w-0">
