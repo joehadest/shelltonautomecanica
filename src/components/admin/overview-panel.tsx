@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import {
   CalendarClock,
   ListOrdered,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 export function OverviewPanel() {
   const { agendamentos, fila, agendaConfig } = useDB();
+  const reduceMotion = useReducedMotion();
 
   const pendentes = agendamentos.filter((a) => a.status === "pendente");
   const aprovados = agendamentos.filter((a) => a.status === "aprovado");
@@ -41,6 +43,7 @@ export function OverviewPanel() {
       icon: Inbox,
       tone: "text-amber-400",
       bg: "bg-amber-400/10",
+      border: "border-amber-400/15",
     },
     {
       label: "Na fila",
@@ -49,6 +52,7 @@ export function OverviewPanel() {
       icon: ListOrdered,
       tone: "text-sky-400",
       bg: "bg-sky-400/10",
+      border: "border-sky-400/15",
     },
     {
       label: "Lista de espera",
@@ -57,6 +61,7 @@ export function OverviewPanel() {
       icon: Clock,
       tone: "text-amber-400",
       bg: "bg-amber-400/10",
+      border: "border-amber-400/15",
     },
     {
       label: "Prontos",
@@ -65,6 +70,7 @@ export function OverviewPanel() {
       icon: CheckCircle2,
       tone: "text-emerald-400",
       bg: "bg-emerald-400/10",
+      border: "border-emerald-400/15",
     },
     {
       label: "Novos hoje",
@@ -73,6 +79,7 @@ export function OverviewPanel() {
       icon: TrendingUp,
       tone: "text-primary",
       bg: "bg-primary/10",
+      border: "border-primary/20",
     },
   ];
 
@@ -85,34 +92,39 @@ export function OverviewPanel() {
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {kpis.map((k) => (
-          <Card key={k.label} className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{k.label}</p>
-                <p className={cn("mt-2 text-3xl font-extrabold", k.tone)}>
-                  {k.value}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{k.hint}</p>
+        {kpis.map((k, i) => (
+          <motion.div
+            key={k.label}
+            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: reduceMotion ? 0 : i * 0.05, duration: 0.3 }}
+          >
+            <Card className={cn("border p-5", k.border)}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{k.label}</p>
+                  <p className={cn("mt-2 text-3xl font-extrabold tracking-tight", k.tone)}>
+                    {k.value}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{k.hint}</p>
+                </div>
+                <span
+                  className={cn(
+                    "flex size-11 items-center justify-center rounded-xl border border-white/[0.04]",
+                    k.bg,
+                    k.tone
+                  )}
+                >
+                  <k.icon className="size-5" />
+                </span>
               </div>
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-xl",
-                  k.bg,
-                  k.tone
-                )}
-              >
-                <k.icon className="size-5" />
-              </span>
-            </div>
-          </Card>
+            </Card>
+          </motion.div>
         ))}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
-        {/* Atividade recente */}
         <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
             <CalendarClock className="size-5 text-primary" />
@@ -127,7 +139,7 @@ export function OverviewPanel() {
               {recentes.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 hover:bg-secondary/40"
+                  className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-white/[0.04]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">
@@ -156,7 +168,6 @@ export function OverviewPanel() {
           )}
         </Card>
 
-        {/* Fila atual */}
         <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
             <Wrench className="size-5 text-primary" />
@@ -171,9 +182,9 @@ export function OverviewPanel() {
               {ativa.slice(0, 6).map((f, i) => (
                 <div
                   key={f.id}
-                  className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-secondary/40"
+                  className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-white/[0.04]"
                 >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -204,10 +215,9 @@ export function OverviewPanel() {
         </Card>
       </div>
 
-      {/* Aprovados resumo */}
-      <Card className="flex items-center justify-between p-5">
+      <Card className="flex items-center justify-between border-emerald-500/15 bg-gradient-to-r from-emerald-500/[0.06] to-transparent p-5">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
             <CheckCircle2 className="size-5" />
           </span>
           <div>
@@ -219,7 +229,7 @@ export function OverviewPanel() {
             </p>
           </div>
         </div>
-        <p className="text-2xl font-extrabold text-foreground">
+        <p className="text-2xl font-extrabold tracking-tight text-foreground">
           {aprovados.length}
         </p>
       </Card>

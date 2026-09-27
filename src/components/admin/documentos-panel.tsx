@@ -351,14 +351,17 @@ function ItensEditor({
   allowEmpty?: boolean;
   scrollToItemId?: string;
 }) {
+  const itemIdsKey = itens.map((item) => item.id).join(",");
   const [valoresEditados, setValoresEditados] = useState<Record<string, string>>(
     () =>
       Object.fromEntries(
         itens.map((item) => [item.id, numberToCurrencyMask(item.valorUnitario)])
       )
   );
+  const [syncedItemIds, setSyncedItemIds] = useState(itemIdsKey);
 
-  useEffect(() => {
+  if (itemIdsKey !== syncedItemIds) {
+    setSyncedItemIds(itemIdsKey);
     setValoresEditados((current) => {
       const ids = new Set(itens.map((item) => item.id));
       const next = Object.fromEntries(
@@ -372,7 +375,7 @@ function ItensEditor({
       }
       return next;
     });
-  }, [itens]);
+  }
 
   // Depende só do id do item novo — incluir `itens` refocava a descrição a cada tecla.
   useEffect(() => {
@@ -385,31 +388,32 @@ function ItensEditor({
   }, [scrollToItemId]);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Icon className="size-4 text-primary" />
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Icon className="size-4 shrink-0 text-primary" />
             {titulo}
-          </CardTitle>
-          <CardDescription>{descricao}</CardDescription>
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{descricao}</p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={onAdd}>
           <Plus />
           Adicionar
         </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {itens.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            Nenhum item. Clique em Adicionar.
-          </p>
-        ) : (
-          itens.map((item, idx) => (
+      </div>
+
+      {itens.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] p-4 text-center text-sm text-muted-foreground">
+          Nenhum item. Clique em Adicionar.
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {itens.map((item, idx) => (
             <div
               key={item.id}
               id={`item-card-${item.id}`}
-              className="rounded-lg border border-border bg-secondary/20 p-3"
+              className="rounded-xl border border-white/[0.06] bg-black/25 p-3"
             >
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -498,18 +502,18 @@ function ItensEditor({
                 </p>
               </div>
             </div>
-          ))
-        )}
-        {itens.length > 0 && (
-          <p className="text-right text-sm font-medium text-foreground">
-            Subtotal {titulo.toLowerCase()}:{" "}
-            <span className="text-primary">
-              {formatCurrency(somaItens(itens))}
-            </span>
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          ))}
+        </div>
+      )}
+      {itens.length > 0 && (
+        <p className="text-right text-sm font-medium text-foreground">
+          Subtotal {titulo.toLowerCase()}:{" "}
+          <span className="text-primary">
+            {formatCurrency(somaItens(itens))}
+          </span>
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -663,7 +667,7 @@ export function DocumentosPanel() {
   const totais = draft ? calcularTotais(draft) : null;
 
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+    <div className="min-w-0 max-w-full space-y-5 overflow-x-hidden">
       <div className="min-w-0">
         <h2 className="text-lg font-semibold text-foreground">
           Orçamentos e Recibos
@@ -676,131 +680,150 @@ export function DocumentosPanel() {
 
       <EmpresaConfigCard />
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
         {/* Lista de pedidos */}
-        <div className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:self-start">
-          <div className="grid gap-2">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => novoManual("orcamento")}
-            >
-              <Plus />
-              Novo orçamento manual
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => novoManual("recibo")}
-            >
-              <Receipt className="size-4" />
-              Novo recibo manual
-            </Button>
-          </div>
-
-          {isManual && draft && (
-            <button
-              type="button"
-              onClick={() => novoManual(draft.tipo)}
-              className="w-full cursor-pointer rounded-xl border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary/30"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 break-words font-medium text-foreground">
-                  {draft.clienteNome.trim() || "Documento avulso"}
+        <aside className="min-w-0 lg:sticky lg:top-0 lg:self-start">
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-3 border-b border-white/[0.05] pb-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+                  Pedidos
                 </p>
-                <Badge variant="secondary" className="shrink-0">
-                  Manual
-                </Badge>
+                <CardTitle className="mt-1 text-base">Origem do documento</CardTitle>
+                <CardDescription>
+                  Pedidos do site ou documento avulso.
+                </CardDescription>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {DOCUMENTO_TIPO_LABEL[draft.tipo]} · preencha os dados ao lado
-              </p>
-            </button>
-          )}
+              <div className="grid gap-2">
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => novoManual("orcamento")}
+                >
+                  <Plus />
+                  Novo orçamento manual
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => novoManual("recibo")}
+                >
+                  <Receipt className="size-4" />
+                  Novo recibo manual
+                </Button>
+              </div>
+            </CardHeader>
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, telefone, placa..."
-              className="pl-9"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-          </div>
-
-          {filtrados.length === 0 && !isManual ? (
-            <Card className="flex flex-col items-center gap-2 p-8 text-center">
-              <Inbox className="size-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {elegiveis.length === 0
-                  ? "Nenhum pedido pelo site ainda. Use os botões acima para criar um documento avulso."
-                  : "Nenhum resultado para a busca."}
-              </p>
-            </Card>
-          ) : filtrados.length > 0 ? (
-            <div className="max-h-[calc(100dvh-16rem)] space-y-2 overflow-y-auto pr-1">
-              {filtrados.map((a) => {
-                const active = selectedId === a.id;
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => selecionar(a)}
-                    className={cn(
-                      "w-full cursor-pointer rounded-xl border p-4 text-left transition-colors",
-                      active
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                        : "border-border bg-card hover:border-primary/40 hover:bg-card/80"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 flex-1 break-words font-medium text-foreground">
-                        {a.cliente_nome}
-                      </p>
-                      <div className="shrink-0">
-                        <StatusBadge status={a.status} />
-                      </div>
-                    </div>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Phone className="size-3.5 text-primary" />
-                      {a.telefone}
+            <CardContent className="space-y-3 pt-4">
+              {isManual && draft && (
+                <button
+                  type="button"
+                  onClick={() => novoManual(draft.tipo)}
+                  className="w-full cursor-pointer rounded-xl border border-primary/40 bg-primary/10 p-3.5 text-left ring-1 ring-primary/25"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 flex-1 break-words font-medium text-foreground">
+                      {draft.clienteNome.trim() || "Documento avulso"}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Wrench className="size-3.5 text-primary" />
-                      {a.servico_nome}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-                      {a.modelo} · {a.placa.toUpperCase()} ·{" "}
-                      {formatDateTime(a.data_hora)}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+                    <Badge variant="secondary" className="shrink-0">
+                      Manual
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {DOCUMENTO_TIPO_LABEL[draft.tipo]} · preencha os dados ao lado
+                  </p>
+                </button>
+              )}
 
-          {elegiveis.length > 0 && (
-            <p className="text-center text-[11px] text-muted-foreground">
-              Pedidos feitos pelo site
-            </p>
-          )}
-        </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, telefone, placa..."
+                  className="pl-9"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                />
+              </div>
 
-        {/* Gerador de documento */}
+              {filtrados.length === 0 && !isManual ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] p-6 text-center">
+                  <span className="flex size-11 items-center justify-center rounded-2xl bg-secondary/60 text-muted-foreground">
+                    <Inbox className="size-5" />
+                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    {elegiveis.length === 0
+                      ? "Nenhum pedido pelo site ainda. Use os botões acima para criar um documento avulso."
+                      : "Nenhum resultado para a busca."}
+                  </p>
+                </div>
+              ) : filtrados.length > 0 ? (
+                <div className="max-h-[min(28rem,calc(100dvh-18rem))] space-y-2 overflow-y-auto overscroll-contain pr-1">
+                  {filtrados.map((a) => {
+                    const active = selectedId === a.id;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => selecionar(a)}
+                        className={cn(
+                          "w-full min-h-11 cursor-pointer rounded-xl border p-3.5 text-left transition-all duration-200",
+                          active
+                            ? "border-primary/40 bg-primary/10 shadow-[0_0_24px_rgba(239,68,68,0.12)] ring-1 ring-primary/30"
+                            : "border-white/[0.06] bg-black/20 hover:border-primary/30 hover:bg-white/[0.03]"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 flex-1 break-words font-medium text-foreground">
+                            {a.cliente_nome}
+                          </p>
+                          <div className="shrink-0">
+                            <StatusBadge status={a.status} />
+                          </div>
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Phone className="size-3.5 text-primary" />
+                          {a.telefone}
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Wrench className="size-3.5 text-primary" />
+                          {a.servico_nome}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                          {a.modelo} · {a.placa.toUpperCase()} ·{" "}
+                          {formatDateTime(a.data_hora)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {elegiveis.length > 0 && (
+                <p className="text-center text-[11px] text-muted-foreground">
+                  Pedidos feitos pelo site
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </aside>
+
+        {/* Formulário + pré-visualização */}
         {!draft ? (
-          <Card className="flex min-h-[420px] flex-col items-center justify-center gap-3 p-10 text-center">
-            <FileText className="size-10 text-muted-foreground" />
+          <Card className="flex min-h-[420px] flex-col items-center justify-center gap-3 border-dashed p-10 text-center hover:border-white/[0.08]">
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_rgba(239,68,68,0.15)]">
+              <FileText className="size-7" />
+            </span>
             <p className="text-sm text-muted-foreground">
               Selecione um pedido ou crie um orçamento/recibo manual.
             </p>
-            <Button type="button" onClick={() => novoManual("orcamento")}>
+            <Button type="button" className="min-h-11" onClick={() => novoManual("orcamento")}>
               <Plus />
               Criar orçamento manual
             </Button>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-5">
             {isManual && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">
@@ -812,142 +835,184 @@ export function DocumentosPanel() {
                 </p>
               </div>
             )}
-            {/* Tipo de documento */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Tipo de documento</CardTitle>
-                <CardDescription>
-                  Orçamento para aprovação prévia; recibo após conclusão do
-                  serviço.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { id: "orcamento" as DocumentoTipo, icon: FileText },
-                      { id: "recibo" as DocumentoTipo, icon: Receipt },
-                    ] as const
-                  ).map(({ id, icon: Icon }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => updateDraft("tipo", id)}
-                      className={cn(
-                        "flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-colors",
-                        draft.tipo === id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground hover:border-primary/50"
-                      )}
-                    >
-                      <Icon className="size-4" />
-                      {DOCUMENTO_TIPO_LABEL[id]}
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] xl:items-start">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] xl:items-start">
               {/* Formulário */}
-              <div className="min-w-0 space-y-4">
+              <div className="min-w-0 space-y-5">
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Dados do cliente</CardTitle>
+                  <CardHeader className="border-b border-white/[0.05] pb-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+                      Formulário
+                    </p>
+                    <CardTitle className="mt-1 text-base">Dados do documento</CardTitle>
+                    <CardDescription>
+                      Tipo, cliente e veículo que aparecem no PDF.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-5 pt-5">
                     <div className="space-y-2">
-                      <Label htmlFor="doc-nome">Nome</Label>
-                      <div className="relative">
-                        <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="doc-nome"
-                          className="pl-9"
-                          value={draft.clienteNome}
-                          onChange={(e) =>
-                            updateDraft("clienteNome", e.target.value)
-                          }
-                        />
+                      <Label>Tipo de documento</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(
+                          [
+                            { id: "orcamento" as DocumentoTipo, icon: FileText },
+                            { id: "recibo" as DocumentoTipo, icon: Receipt },
+                          ] as const
+                        ).map(({ id, icon: Icon }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => updateDraft("tipo", id)}
+                            className={cn(
+                              "flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors",
+                              draft.tipo === id
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-white/[0.08] bg-black/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                            )}
+                          >
+                            <Icon className="size-4" />
+                            {DOCUMENTO_TIPO_LABEL[id]}
+                          </button>
+                        ))}
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Orçamento para aprovação prévia; recibo após conclusão do
+                        serviço.
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="doc-tel">WhatsApp</Label>
-                      <div className="relative">
-                        <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <MaskedInput
-                          id="doc-tel"
-                          mask="phone"
-                          type="tel"
-                          className="pl-9"
-                          placeholder="(11) 99999-0000"
-                          value={draft.telefone}
-                          onValueChange={(v) => updateDraft("telefone", v)}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+
+                    <div className="h-px bg-white/[0.06]" />
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Cliente
+                      </p>
                       <div className="space-y-2">
-                        <Label htmlFor="doc-modelo">Modelo</Label>
+                        <Label htmlFor="doc-nome">Nome</Label>
                         <div className="relative">
-                          <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
-                            id="doc-modelo"
+                            id="doc-nome"
                             className="pl-9"
-                            value={draft.modelo}
+                            value={draft.clienteNome}
                             onChange={(e) =>
-                              updateDraft("modelo", e.target.value)
+                              updateDraft("clienteNome", e.target.value)
                             }
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="doc-placa">Placa</Label>
-                        <MaskedInput
-                          id="doc-placa"
-                          mask="placa"
-                          placeholder="ABC1D23"
-                          value={draft.placa}
-                          onValueChange={(v) => updateDraft("placa", v)}
-                        />
+                        <Label htmlFor="doc-tel">WhatsApp</Label>
+                        <div className="relative">
+                          <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                          <MaskedInput
+                            id="doc-tel"
+                            mask="phone"
+                            type="tel"
+                            className="pl-9"
+                            placeholder="(11) 99999-0000"
+                            value={draft.telefone}
+                            onValueChange={(v) => updateDraft("telefone", v)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-white/[0.06]" />
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Veículo
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="doc-modelo">Modelo</Label>
+                          <div className="relative">
+                            <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="doc-modelo"
+                              className="pl-9"
+                              value={draft.modelo}
+                              onChange={(e) =>
+                                updateDraft("modelo", e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="doc-placa">Placa</Label>
+                          <MaskedInput
+                            id="doc-placa"
+                            mask="placa"
+                            placeholder="ABC1D23"
+                            value={draft.placa}
+                            onValueChange={(v) => updateDraft("placa", v)}
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <ItensEditor
-                  titulo="Mão de obra"
-                  descricao="Serviços, diagnósticos e trabalhos executados."
-                  icon={Hammer}
-                  itens={draft.maoDeObra}
-                  onAdd={() => addItem("maoDeObra")}
-                  onUpdate={(id, patch) => updateItem("maoDeObra", id, patch)}
-                  onRemove={(id) => removeItem("maoDeObra", id)}
-                  placeholder="Ex.: Troca de óleo, alinhamento, revisão"
-                  scrollToItemId={
-                    novoItem?.lista === "maoDeObra" ? novoItem.id : undefined
-                  }
-                />
+                <Card>
+                  <CardHeader className="border-b border-white/[0.05] pb-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+                      Itens
+                    </p>
+                    <CardTitle className="mt-1 text-base">
+                      Serviços e produtos
+                    </CardTitle>
+                    <CardDescription>
+                      Monte a mão de obra e as peças que entram no documento.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-5">
+                    <ItensEditor
+                      titulo="Mão de obra"
+                      descricao="Serviços, diagnósticos e trabalhos executados."
+                      icon={Hammer}
+                      itens={draft.maoDeObra}
+                      onAdd={() => addItem("maoDeObra")}
+                      onUpdate={(id, patch) => updateItem("maoDeObra", id, patch)}
+                      onRemove={(id) => removeItem("maoDeObra", id)}
+                      placeholder="Ex.: Troca de óleo, alinhamento, revisão"
+                      scrollToItemId={
+                        novoItem?.lista === "maoDeObra" ? novoItem.id : undefined
+                      }
+                    />
 
-                <ItensEditor
-                  titulo="Produtos / peças"
-                  descricao="Peças, fluidos e materiais utilizados."
-                  icon={Package}
-                  itens={draft.produtos}
-                  onAdd={() => addItem("produtos")}
-                  onUpdate={(id, patch) => updateItem("produtos", id, patch)}
-                  onRemove={(id) => removeItem("produtos", id)}
-                  placeholder="Ex.: Filtro de óleo, pastilha de freio"
-                  allowEmpty
-                  scrollToItemId={
-                    novoItem?.lista === "produtos" ? novoItem.id : undefined
-                  }
-                />
+                    <div className="h-px bg-white/[0.06]" />
+
+                    <ItensEditor
+                      titulo="Produtos / peças"
+                      descricao="Peças, fluidos e materiais utilizados."
+                      icon={Package}
+                      itens={draft.produtos}
+                      onAdd={() => addItem("produtos")}
+                      onUpdate={(id, patch) => updateItem("produtos", id, patch)}
+                      onRemove={(id) => removeItem("produtos", id)}
+                      placeholder="Ex.: Filtro de óleo, pastilha de freio"
+                      allowEmpty
+                      scrollToItemId={
+                        novoItem?.lista === "produtos" ? novoItem.id : undefined
+                      }
+                    />
+                  </CardContent>
+                </Card>
 
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Resumo financeiro</CardTitle>
+                  <CardHeader className="border-b border-white/[0.05] pb-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+                      Fechamento
+                    </p>
+                    <CardTitle className="mt-1 text-base">
+                      Totais e observações
+                    </CardTitle>
+                    <CardDescription>
+                      Desconto, resumo financeiro e condições do documento.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-5 pt-5">
                     <div className="space-y-2">
                       <Label htmlFor="doc-desconto">Desconto (R$)</Label>
                       <MaskedInput
@@ -960,8 +1025,9 @@ export function DocumentosPanel() {
                         }
                       />
                     </div>
+
                     {totais && (
-                      <div className="rounded-lg border border-border bg-card/60 p-4 text-sm">
+                      <div className="rounded-xl border border-white/[0.06] bg-black/25 p-4 text-sm">
                         <div className="flex justify-between text-muted-foreground">
                           <span>Mão de obra</span>
                           <span>{formatCurrency(totais.subtotalMaoDeObra)}</span>
@@ -970,7 +1036,7 @@ export function DocumentosPanel() {
                           <span>Produtos / peças</span>
                           <span>{formatCurrency(totais.subtotalProdutos)}</span>
                         </div>
-                        <div className="mt-1 flex justify-between border-t border-border/60 pt-1 text-muted-foreground">
+                        <div className="mt-1 flex justify-between border-t border-white/[0.06] pt-1 text-muted-foreground">
                           <span>Subtotal geral</span>
                           <span>{formatCurrency(totais.subtotal)}</span>
                         </div>
@@ -980,7 +1046,7 @@ export function DocumentosPanel() {
                             <span>−{formatCurrency(totais.desconto)}</span>
                           </div>
                         )}
-                        <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-bold text-foreground">
+                        <div className="mt-2 flex justify-between border-t border-white/[0.08] pt-2 text-base font-bold text-foreground">
                           <span>Total</span>
                           <span className="text-primary">
                             {formatCurrency(totais.total)}
@@ -988,37 +1054,39 @@ export function DocumentosPanel() {
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Observações</CardTitle>
-                    <CardDescription>
-                      Validade do orçamento, garantia, condições de pagamento,
-                      etc.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      rows={4}
-                      value={draft.observacoes}
-                      onChange={(e) =>
-                        updateDraft("observacoes", e.target.value)
-                      }
-                    />
+                    <div className="h-px bg-white/[0.06]" />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="doc-obs">Observações</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Validade do orçamento, garantia, condições de pagamento,
+                        etc.
+                      </p>
+                      <Textarea
+                        id="doc-obs"
+                        rows={4}
+                        value={draft.observacoes}
+                        onChange={(e) =>
+                          updateDraft("observacoes", e.target.value)
+                        }
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Pré-visualização + envio */}
-              <div className="min-w-0 space-y-4 xl:sticky xl:top-20 xl:max-h-[calc(100dvh-5.5rem)] xl:self-start xl:overflow-y-auto">
+              <div className="min-w-0 space-y-4 xl:sticky xl:top-0 xl:max-h-[calc(100dvh-2rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain">
                 <Card className="overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-white/[0.05] pb-4">
                     <div className="min-w-0">
-                      <CardTitle className="text-base">Pré-visualização</CardTitle>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
+                        Pré-visualização
+                      </p>
+                      <CardTitle className="mt-1 text-base">Prévia do PDF</CardTitle>
                       <CardDescription>
-                        Prévia do PDF em formato de planilha.
+                        Formato de planilha, como no arquivo gerado.
                       </CardDescription>
                     </div>
                     <Button
@@ -1032,7 +1100,7 @@ export function DocumentosPanel() {
                     </Button>
                   </CardHeader>
                   {showPreview && (
-                    <CardContent className="overflow-x-auto">
+                    <CardContent className="overflow-x-auto pt-4">
                       <DocumentPreview draft={draft} empresa={empresa} />
                     </CardContent>
                   )}

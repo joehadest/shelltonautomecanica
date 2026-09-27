@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Check,
   X,
@@ -38,6 +39,7 @@ function StatusBadge({ status }: { status: Agendamento["status"] }) {
 
 export function AgendamentosPanel() {
   const { agendamentos } = useDB();
+  const reduceMotion = useReducedMotion();
   const pendentes = agendamentos.filter((a) => a.status === "pendente");
   const resolvidos = agendamentos.filter(
     (a) => a.status === "aprovado" || a.status === "recusado"
@@ -84,79 +86,88 @@ export function AgendamentosPanel() {
         </div>
 
         {pendentes.length === 0 ? (
-          <Card className="flex flex-col items-center gap-2 p-10 text-center">
-            <Inbox className="size-8 text-muted-foreground" />
+          <Card className="flex flex-col items-center gap-2 border-dashed p-10 text-center hover:border-white/[0.08]">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary/60 text-muted-foreground">
+              <Inbox className="size-6" />
+            </span>
             <p className="text-sm text-muted-foreground">
               Nenhuma solicitação pendente no momento.
             </p>
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 3xl:grid-cols-3">
-            {pendentes.map((a) => (
-              <Card key={a.id} className="border-amber-500/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">
-                      {a.cliente_nome}
-                    </CardTitle>
-                    <StatusBadge status={a.status} />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <p className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="size-4 text-primary" />
-                    {a.telefone}
-                  </p>
-                  <p className="flex items-center gap-2 text-muted-foreground">
-                    <Car className="size-4 text-primary" />
-                    {a.modelo} ·{" "}
-                    <span className="font-mono uppercase">{a.placa}</span>
-                  </p>
-                  <p className="flex items-center gap-2 text-muted-foreground">
-                    <Wrench className="size-4 text-primary" />
-                    {a.servico_nome}
-                  </p>
-                  <p className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="size-4 shrink-0 text-primary" />
-                    <span>
-                      {formatDateTime(a.data_hora)}
-                      {a.horario_chegada && (
-                        <>
-                          {" "}
-                          · Deixa o carro às{" "}
-                          <strong className="text-foreground">
-                            {a.horario_chegada}
-                          </strong>
-                        </>
-                      )}
-                    </span>
-                  </p>
-                  {a.observacoes && (
-                    <p className="rounded-md bg-secondary/50 p-2 text-xs text-muted-foreground">
-                      “{a.observacoes}”
+            {pendentes.map((a, i) => (
+              <motion.div
+                key={a.id}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: reduceMotion ? 0 : i * 0.04, duration: 0.28 }}
+              >
+                <Card className="border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] via-card/90 to-card/90">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base">
+                        {a.cliente_nome}
+                      </CardTitle>
+                      <StatusBadge status={a.status} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="size-4 text-primary" />
+                      {a.telefone}
                     </p>
-                  )}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => aprovar(a)}
-                    >
-                      <Check />
-                      Aprovar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => recusar(a)}
-                    >
-                      <X />
-                      Recusar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Car className="size-4 text-primary" />
+                      {a.modelo} ·{" "}
+                      <span className="font-mono uppercase">{a.placa}</span>
+                    </p>
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Wrench className="size-4 text-primary" />
+                      {a.servico_nome}
+                    </p>
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="size-4 shrink-0 text-primary" />
+                      <span>
+                        {formatDateTime(a.data_hora)}
+                        {a.horario_chegada && (
+                          <>
+                            {" "}
+                            · Deixa o carro às{" "}
+                            <strong className="text-foreground">
+                              {a.horario_chegada}
+                            </strong>
+                          </>
+                        )}
+                      </span>
+                    </p>
+                    {a.observacoes && (
+                      <p className="rounded-lg border border-white/[0.05] bg-secondary/40 p-2 text-xs text-muted-foreground">
+                        “{a.observacoes}”
+                      </p>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        className="min-h-11 flex-1"
+                        onClick={() => aprovar(a)}
+                      >
+                        <Check />
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 flex-1"
+                        onClick={() => recusar(a)}
+                      >
+                        <X />
+                        Recusar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         )}
@@ -167,12 +178,12 @@ export function AgendamentosPanel() {
           <h2 className="mb-3 text-lg font-semibold text-foreground">
             Histórico de solicitações
           </h2>
-          <Card>
-            <div className="divide-y divide-border">
+          <Card className="overflow-hidden p-0">
+            <div className="divide-y divide-white/[0.05]">
               {resolvidos.map((a) => (
                 <div
                   key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03]"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">
@@ -188,6 +199,7 @@ export function AgendamentosPanel() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      className="min-h-11 min-w-11"
                       onClick={() => remover(a)}
                       aria-label="Remover"
                     >

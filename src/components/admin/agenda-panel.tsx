@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { CalendarCog, Save, Car, Clock, CalendarDays } from "lucide-react";
 import {
@@ -61,11 +61,13 @@ export function AgendaPanel() {
   const { agendaConfig } = useDB();
   const resolved = resolveAgenda(agendaConfig);
   const [draft, setDraft] = useState<AgendaDraft>(() => toDraft(resolved));
+  const [syncedConfig, setSyncedConfig] = useState(agendaConfig);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setDraft(toDraft(resolveAgenda(agendaConfig)));
-  }, [agendaConfig]);
+  if (agendaConfig !== syncedConfig) {
+    setSyncedConfig(agendaConfig);
+    setDraft(toDraft(resolved));
+  }
 
   function update<K extends keyof AgendaDraft>(key: K, value: AgendaDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));

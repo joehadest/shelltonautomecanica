@@ -38,22 +38,22 @@
 }
 
 .dark {
-  --background: #09090b; /* quase preto */
+  --background: #060607; /* preto profundo */
   --foreground: #fafafa;
 
-  --card: #111113;
+  --card: #0e0e11;
   --card-foreground: #fafafa;
 
-  --popover: #111113;
+  --popover: #121216;
   --popover-foreground: #fafafa;
 
   --primary: #ef4444; /* vermelho mais vivo no escuro */
   --primary-foreground: #ffffff;
 
-  --secondary: #1c1c1f;
+  --secondary: #16161a;
   --secondary-foreground: #fafafa;
 
-  --muted: #1c1c1f;
+  --muted: #16161a;
   --muted-foreground: #a1a1aa;
 
   --accent: #1f1416;
@@ -62,9 +62,17 @@
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #27272a;
-  --input: #27272a;
+  --border: #232329;
+  --input: #232329;
   --ring: #ef4444;
+
+  /* Admin premium tokens */
+  --admin-glow: rgba(239, 68, 68, 0.18);
+  --admin-glow-strong: rgba(239, 68, 68, 0.35);
+  --admin-glass: rgba(14, 14, 17, 0.72);
+  --admin-glass-border: rgba(255, 255, 255, 0.06);
+  --admin-surface: #0c0c0f;
+  --admin-surface-elevated: #121216;
 }
 
 @theme inline {
@@ -276,10 +284,123 @@ body {
   max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
+  position: relative;
+  isolation: isolate;
 }
 
 .admin-shell *,
 .admin-shell *::before,
 .admin-shell *::after {
   box-sizing: border-box;
+}
+
+/* Atmosfera premium: gradientes ambient + glow vermelho */
+.admin-shell::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% -10%, var(--admin-glow), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(239, 68, 68, 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(239, 68, 68, 0.06), transparent 55%),
+    linear-gradient(180deg, #060607 0%, #0a0a0c 40%, #060607 100%);
+}
+
+.admin-glass {
+  background: var(--admin-glass);
+  border: 1px solid var(--admin-glass-border);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.admin-glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(18, 18, 22, 0.92) 0%,
+    rgba(12, 12, 15, 0.88) 100%
+  );
+  border: 1px solid var(--admin-glass-border);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 8px 32px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+.admin-glass-card:hover {
+  border-color: rgba(239, 68, 68, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(239, 68, 68, 0.08);
+}
+
+.admin-glow-ring {
+  box-shadow:
+    0 0 0 1px rgba(239, 68, 68, 0.25),
+    0 0 24px var(--admin-glow),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes admin-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes admin-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-dialog-in {
+  animation: admin-dialog-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-backdrop-in {
+  animation: admin-backdrop-in 0.22s ease-out both;
+}
+
+@keyframes admin-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-panel-in {
+  animation: admin-panel-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dialog-in,
+  .animate-backdrop-in,
+  .animate-panel-in,
+  .admin-glass-card {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .admin-glass-card:hover {
+    transform: none;
+  }
 }

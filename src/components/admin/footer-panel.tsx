@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { PanelBottom, Save } from "lucide-react";
 import {
@@ -38,11 +38,13 @@ export function FooterPanel() {
   const { footer } = useDB();
   const resolved = resolveFooter(footer);
   const [draft, setDraft] = useState<FooterDraft>(() => toDraft(resolved));
+  const [syncedFooter, setSyncedFooter] = useState(footer);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setDraft(toDraft(resolveFooter(footer)));
-  }, [footer]);
+  if (footer !== syncedFooter) {
+    setSyncedFooter(footer);
+    setDraft(toDraft(resolved));
+  }
 
   function update<K extends keyof FooterDraft>(key: K, value: FooterDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Save, Upload, X, PenLine, ImageIcon } from "lucide-react";
 import {
@@ -47,14 +47,16 @@ export function EmpresaConfigCard() {
   const { empresaConfig } = useDB();
   const resolved = resolveEmpresa(empresaConfig);
   const [draft, setDraft] = useState<EmpresaDraft>(() => toDraft(resolved));
+  const [syncedConfig, setSyncedConfig] = useState(empresaConfig);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setDraft(toDraft(resolveEmpresa(empresaConfig)));
-  }, [empresaConfig]);
+  if (empresaConfig !== syncedConfig) {
+    setSyncedConfig(empresaConfig);
+    setDraft(toDraft(resolved));
+  }
 
   const current = toDraft(resolved);
   const hasChanges =
