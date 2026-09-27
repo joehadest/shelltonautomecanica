@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import {
   Bell,
@@ -33,20 +33,35 @@ import { sendTestNotification } from "@/app/admin/push-actions";
 import { useSoundEnabled, setSoundEnabled } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
+function subscribeNever() {
+  return () => {};
+}
+
 export function ConfigPanel() {
   const soundEnabled = useSoundEnabled();
-  const [supported, setSupported] = useState(true);
+  const supported = useSyncExternalStore(
+    subscribeNever,
+    isPushSupported,
+    () => true
+  );
+  const standalone = useSyncExternalStore(
+    subscribeNever,
+    isStandalone,
+    () => true
+  );
+  const ios = useSyncExternalStore(subscribeNever, isIOS, () => false);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [standalone, setStandalone] = useState(true);
-  const [ios, setIos] = useState(false);
 
   useEffect(() => {
-    setSupported(isPushSupported());
-    setStandalone(isStandalone());
-    setIos(isIOS());
-    getCurrentSubscription().then((s) => setSubscribed(!!s));
+    let cancelled = false;
+    getCurrentSubscription().then((s) => {
+      if (!cancelled) setSubscribed(!!s);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleEnable() {

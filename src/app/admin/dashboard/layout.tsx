@@ -43,12 +43,12 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen min-w-0 max-w-full flex-col overflow-x-hidden [&_a]:cursor-pointer [&_button]:cursor-pointer [&_label:has(input[type=checkbox])]:cursor-pointer [&_select]:cursor-pointer">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-lg">
-        <div className="mx-auto flex h-14 w-full min-w-0 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:px-4 3xl:max-w-[1920px]">
+    <div className="flex h-screen min-h-0 min-w-0 max-w-full flex-col overflow-hidden supports-[height:100dvh]:h-dvh [&_a]:cursor-pointer [&_button]:cursor-pointer [&_label:has(input[type=checkbox])]:cursor-pointer [&_select]:cursor-pointer">
+      <header className="z-30 shrink-0 border-b border-white/[0.06] bg-black/55 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 w-full min-w-0 max-w-[100rem] items-center justify-between gap-2 px-3 sm:h-16 sm:px-4 lg:px-5">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <Logo className="gap-2 [&_img]:size-9 sm:[&_img]:size-14 [&>span:last-child]:hidden sm:[&>span:last-child]:flex" />
-            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary sm:px-2.5 sm:text-xs">
+            <Logo className="gap-2 [&_img]:size-9 sm:[&_img]:size-12 [&>span:last-child]:hidden sm:[&>span:last-child]:flex" />
+            <span className="shrink-0 rounded-lg border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shadow-[0_0_16px_rgba(239,68,68,0.15)] sm:px-2.5 sm:text-xs">
               Admin
             </span>
           </div>
@@ -57,7 +57,7 @@ export default function DashboardLayout({
             <Link
               href="/"
               target="_blank"
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md p-2 text-sm text-muted-foreground hover:text-foreground sm:px-3 sm:py-2"
+              className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl p-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground sm:min-w-0 sm:px-3 sm:py-2"
               aria-label="Ver site"
             >
               <ExternalLink className="size-4" />
@@ -70,7 +70,7 @@ export default function DashboardLayout({
           </div>
         </div>
       </header>
-      <main className="min-w-0 max-w-full flex-1 overflow-x-hidden bg-background">
+      <main className="min-h-0 min-w-0 max-w-full flex-1 overflow-hidden">
         {children}
       </main>
     </div>

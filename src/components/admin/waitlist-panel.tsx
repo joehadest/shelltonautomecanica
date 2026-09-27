@@ -76,8 +76,10 @@ export function WaitlistPanel() {
       </p>
 
       {lista.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 p-10 text-center">
-          <Clock className="size-8 text-muted-foreground" />
+        <Card className="flex flex-col items-center gap-2 border-dashed p-10 text-center hover:border-white/[0.08]">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+            <Clock className="size-6" />
+          </span>
           <p className="text-sm text-muted-foreground">
             Ninguém na lista de espera no momento.
           </p>
@@ -85,14 +87,14 @@ export function WaitlistPanel() {
       ) : (
         <div className="space-y-3">
           {lista.map((a, idx) => (
-            <Card key={a.id} className="border-amber-500/25 p-4">
+            <Card key={a.id} className="border-amber-500/25 bg-gradient-to-br from-amber-500/[0.05] to-transparent p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6"
+                      className="h-8 w-8 min-h-8 min-w-8"
                       disabled={idx === 0}
                       onClick={() => mover(a.id, "up")}
                       aria-label="Subir na espera"
@@ -102,7 +104,7 @@ export function WaitlistPanel() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6"
+                      className="h-8 w-8 min-h-8 min-w-8"
                       disabled={idx === lista.length - 1}
                       onClick={() => mover(a.id, "down")}
                       aria-label="Descer na espera"
@@ -110,7 +112,7 @@ export function WaitlistPanel() {
                       <ChevronDown />
                     </Button>
                   </div>
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500/15 text-sm font-bold text-amber-500">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-sm font-bold text-amber-400">
                     {a.posicao_espera ?? idx + 1}
                   </span>
                 </div>
@@ -142,6 +144,7 @@ export function WaitlistPanel() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
+                    className="min-h-11"
                     disabled={vagasLivres <= 0}
                     onClick={() => promover(a.id, a.cliente_nome)}
                   >
@@ -151,6 +154,7 @@ export function WaitlistPanel() {
                   <Button
                     size="icon"
                     variant="ghost"
+                    className="min-h-11 min-w-11"
                     onClick={() => remover(a.id, a.cliente_nome)}
                     aria-label="Remover da espera"
                   >

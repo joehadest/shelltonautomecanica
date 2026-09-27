@@ -112,14 +112,14 @@ export function PortfolioPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold text-foreground">
             Serviços do portfólio
           </h2>
           <Badge variant="secondary">{ordenados.length}</Badge>
         </div>
-        <Button onClick={openNew}>
+        <Button onClick={openNew} className="min-h-11">
           <Plus />
           Novo serviço
         </Button>
@@ -131,7 +131,7 @@ export function PortfolioPanel() {
           return (
             <Card key={s.id} className="p-5">
               <div className="mb-3 flex items-start justify-between">
-                <div className="inline-flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <div className="inline-flex size-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-[0_0_18px_rgba(239,68,68,0.12)]">
                   <Icon className="size-5" />
                 </div>
                 {s.ativo ? (
@@ -152,7 +152,7 @@ export function PortfolioPanel() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  className="min-h-11 flex-1"
                   onClick={() => openEdit(s)}
                 >
                   <Pencil />
@@ -161,6 +161,7 @@ export function PortfolioPanel() {
                 <Button
                   size="icon"
                   variant="ghost"
+                  className="min-h-11 min-w-11"
                   onClick={() => toggleAtivo(s)}
                   aria-label="Alternar visibilidade"
                 >
@@ -169,6 +170,7 @@ export function PortfolioPanel() {
                 <Button
                   size="icon"
                   variant="ghost"
+                  className="min-h-11 min-w-11"
                   onClick={() => remover(s)}
                   aria-label="Excluir"
                 >
@@ -180,11 +182,11 @@ export function PortfolioPanel() {
         })}
 
         {ordenados.length === 0 && (
-          <Card className="col-span-full flex flex-col items-center gap-3 p-10 text-center">
+          <Card className="col-span-full flex flex-col items-center gap-3 border-dashed p-10 text-center hover:border-white/[0.08]">
             <p className="text-sm text-muted-foreground">
               Nenhum serviço cadastrado.
             </p>
-            <Button onClick={openNew}>
+            <Button onClick={openNew} className="min-h-11">
               <Plus />
               Adicionar primeiro serviço
             </Button>
