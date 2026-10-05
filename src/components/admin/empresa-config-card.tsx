@@ -3,13 +3,8 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Save, Upload, X, PenLine, ImageIcon } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DocumentoModal } from "./documento-modal";
+import styles from "./documentos.module.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MaskedInput } from "@/components/ui/masked-input";
@@ -59,19 +54,21 @@ export function EmpresaConfigCard() {
   }
 
   const current = toDraft(resolved);
-  const hasChanges =
-    (Object.keys(draft) as (keyof EmpresaDraft)[]).some(
-      (k) => draft[k] !== current[k]
-    );
+  const hasChanges = (Object.keys(draft) as (keyof EmpresaDraft)[]).some(
+    (k) => draft[k] !== current[k],
+  );
 
-  function update<K extends keyof EmpresaDraft>(key: K, value: EmpresaDraft[K]) {
+  function update<K extends keyof EmpresaDraft>(
+    key: K,
+    value: EmpresaDraft[K],
+  ) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
   function onImageFile(
     e: React.ChangeEvent<HTMLInputElement>,
     field: "logo_base64" | "assinatura_base64",
-    label: string
+    label: string,
   ) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -122,6 +119,7 @@ export function EmpresaConfigCard() {
     try {
       await empresaApi.update(draft);
       toast.success("Dados da empresa salvos! Aparecerão no topo dos PDFs.");
+      setOpen(false);
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Erro ao salvar dados da empresa.";
@@ -132,41 +130,60 @@ export function EmpresaConfigCard() {
   }
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader
-        className="cursor-pointer pb-3"
-        onClick={() => setOpen((v) => !v)}
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className={styles.action}
+        onClick={() => setOpen(true)}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="size-4 shrink-0 text-primary" />
-              Dados da empresa (PDF)
-            </CardTitle>
-            <CardDescription className="mt-1.5 break-words">
-              CNPJ, endereço e assinatura exibidos no cabeçalho e rodapé dos
-              documentos.
-            </CardDescription>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
-          >
-            {open ? "Recolher" : "Expandir"}
-          </Button>
-        </div>
-      </CardHeader>
-
-      {open && (
-        <CardContent className="space-y-5 border-t border-border pt-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+        <Building2 /> Dados da empresa
+      </Button>
+      <DocumentoModal
+        open={open}
+        onClose={() => {
+          if (!saving) setOpen(false);
+        }}
+        title="Dados da empresa"
+        description="Personalize o cabeçalho, a logo e a assinatura dos documentos."
+        wide
+        footer={
+          <>
+            <p>
+              {hasChanges ? "Alterações ainda não salvas" : "Dados atualizados"}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                setDraft(toDraft(resolved));
+                setOpen(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="empresa-documentos-form"
+              disabled={saving || !hasChanges}
+            >
+              <Save />
+              {saving ? "Salvando..." : "Salvar dados"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="empresa-documentos-form"
+          className={styles.modalFields}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void salvar();
+          }}
+        >
+          <div className={styles.fieldGrid}>
+            <div className={`${styles.field} ${styles.fullWidth}`}>
               <Label htmlFor="emp-razao">Razão social</Label>
               <Input
                 id="emp-razao"
@@ -174,7 +191,7 @@ export function EmpresaConfigCard() {
                 onChange={(e) => update("razao_social", e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label htmlFor="emp-fantasia">Nome fantasia</Label>
               <Input
                 id="emp-fantasia"
@@ -182,7 +199,7 @@ export function EmpresaConfigCard() {
                 onChange={(e) => update("nome_fantasia", e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label htmlFor="emp-cnpj">CNPJ</Label>
               <MaskedInput
                 id="emp-cnpj"
@@ -192,7 +209,7 @@ export function EmpresaConfigCard() {
                 placeholder="00.000.000/0001-00"
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label htmlFor="emp-ie">Inscrição estadual</Label>
               <Input
                 id="emp-ie"
@@ -201,7 +218,7 @@ export function EmpresaConfigCard() {
                 placeholder="Opcional"
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className={`${styles.field} ${styles.fullWidth}`}>
               <Label htmlFor="emp-end">Endereço</Label>
               <Input
                 id="emp-end"
@@ -209,7 +226,7 @@ export function EmpresaConfigCard() {
                 onChange={(e) => update("endereco", e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label htmlFor="emp-cidade">Cidade / UF</Label>
               <Input
                 id="emp-cidade"
@@ -218,7 +235,7 @@ export function EmpresaConfigCard() {
                 placeholder="São Paulo — SP"
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label htmlFor="emp-tel">Telefone</Label>
               <MaskedInput
                 id="emp-tel"
@@ -228,7 +245,7 @@ export function EmpresaConfigCard() {
                 onValueChange={(v) => update("telefone", v)}
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className={`${styles.field} ${styles.fullWidth}`}>
               <Label htmlFor="emp-email">E-mail</Label>
               <Input
                 id="emp-email"
@@ -239,7 +256,7 @@ export function EmpresaConfigCard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-secondary/20 p-4">
+          <div className={styles.assetCard}>
             <div className="mb-3 flex items-center gap-2">
               <ImageIcon className="size-4 text-primary" />
               <p className="text-sm font-semibold text-foreground">
@@ -248,7 +265,7 @@ export function EmpresaConfigCard() {
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
               Aparece ao lado do nome no topo do PDF. Se não enviar, usamos a
-              logo do site ({DEFAULT_LOGO_PATH}).
+              logo atual do site. Use PNG, JPG ou WebP, até 500 KB.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="flex h-20 min-w-[120px] flex-1 items-center justify-center rounded-lg border border-dashed border-border bg-background p-2">
@@ -300,7 +317,7 @@ export function EmpresaConfigCard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-secondary/20 p-4">
+          <div className={styles.assetCard}>
             <div className="mb-3 flex items-center gap-2">
               <PenLine className="size-4 text-primary" />
               <p className="text-sm font-semibold text-foreground">
@@ -308,9 +325,9 @@ export function EmpresaConfigCard() {
               </p>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
-              Envie uma imagem PNG ou JPG com fundo transparente. Ela aparece
-              automaticamente nos PDFs. A assinatura do cliente fica em branco
-              para preenchimento presencial.
+              Use preferencialmente um PNG com fundo transparente, até 500 KB.
+              Ela aparece automaticamente nos PDFs. A assinatura do cliente fica
+              em branco para preenchimento presencial.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="flex h-24 min-w-[180px] flex-1 items-center justify-center rounded-lg border border-dashed border-border bg-background p-2">
@@ -369,15 +386,8 @@ export function EmpresaConfigCard() {
               />
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <Button onClick={salvar} disabled={saving || !hasChanges}>
-              <Save />
-              {saving ? "Salvando..." : "Salvar dados da empresa"}
-            </Button>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+        </form>
+      </DocumentoModal>
+    </>
   );
 }

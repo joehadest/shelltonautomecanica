@@ -1,56 +1,48 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   FileText,
   Receipt,
-  Phone,
-  User,
-  Car,
+  ClipboardList,
   Plus,
   Trash2,
   Send,
   Search,
   Eye,
-  MessageCircle,
-  Wrench,
   Inbox,
   FileDown,
   Hammer,
   Package,
+  ArrowRight,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  ArrowLeftRight,
+  type LucideIcon,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MaskedInput } from "@/components/ui/masked-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useDB } from "@/lib/store";
+import { useDB, useDBLoading } from "@/lib/store";
 import { resolveEmpresa } from "@/lib/empresa-defaults";
-import { EmpresaConfigCard } from "@/components/admin/empresa-config-card";
-import type { ConfiguracaoEmpresa } from "@/lib/types";
+import { EmpresaConfigCard } from "./empresa-config-card";
+import { DocumentoModal } from "./documento-modal";
+import { DocumentoPreview } from "./documento-preview";
+import { VehicleFields } from "./vehicle-fields";
 import { cn, formatDateTime } from "@/lib/utils";
-import {
-  currencyToNumber,
-  numberToCurrencyMask,
-} from "@/lib/masks";
-import {
-  AGENDAMENTO_STATUS_LABEL,
-  type Agendamento,
-} from "@/lib/types";
+import { currencyToNumber } from "@/lib/masks";
+import { AGENDAMENTO_STATUS_LABEL, type Agendamento } from "@/lib/types";
 import {
   type DocumentoDraft,
   type DocumentoItem,
   type DocumentoTipo,
   DOCUMENTO_TIPO_LABEL,
+  DOCUMENTO_TIPOS,
   buildWhatsAppShortMessage,
   buildWhatsAppUrl,
   calcularTotais,
@@ -64,462 +56,286 @@ import {
   normalizeWhatsAppPhone,
   somaItens,
 } from "@/lib/documentos";
-import {
-  downloadDocumentoPdf,
-  shareDocumentoPdf,
-} from "@/lib/documento-pdf";
-
-const MANUAL_ID = "__manual__";
-
-function StatusBadge({ status }: { status: Agendamento["status"] }) {
-  const map = {
-    pendente: "warning",
-    aprovado: "success",
-    recusado: "danger",
-    em_espera: "warning",
-  } as const;
-  return (
-    <Badge variant={map[status]}>{AGENDAMENTO_STATUS_LABEL[status]}</Badge>
-  );
-}
-
-function ItemTablePreview({
-  titulo,
-  itens,
-  subtotal,
-}: {
-  titulo: string;
-  itens: DocumentoItem[];
-  subtotal: number;
-}) {
-  const validos = itens.filter((i) => i.descricao.trim());
-
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">
-        {titulo}
-      </p>
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[320px] table-fixed text-left text-xs">
-          <thead>
-            <tr className="bg-primary text-primary-foreground">
-              <th className="px-2 py-2 font-semibold">Descrição</th>
-              <th className="w-11 px-1 py-2 text-center font-semibold">
-                Qtd.
-              </th>
-              <th className="w-16 px-1 py-2 text-right font-semibold">
-                Unit.
-              </th>
-              <th className="w-[4.5rem] px-2 py-2 text-right font-semibold">
-                Subtotal
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {validos.length === 0 ? (
-              <tr className="border-t border-border bg-background">
-                <td colSpan={4} className="px-3 py-3 text-muted-foreground">
-                  Nenhum item informado.
-                </td>
-              </tr>
-            ) : (
-              validos.map((item, idx) => (
-                <tr
-                  key={item.id}
-                  className={cn(
-                    "border-t border-border",
-                    idx % 2 === 0 ? "bg-background" : "bg-secondary/30"
-                  )}
-                >
-                  <td className="break-words px-2 py-2 text-foreground">
-                    {item.descricao}
-                  </td>
-                  <td className="px-1 py-2 text-center text-muted-foreground">
-                    {item.quantidade}
-                  </td>
-                  <td className="px-1 py-2 text-right text-muted-foreground">
-                    {formatCurrency(item.valorUnitario)}
-                  </td>
-                  <td className="px-2 py-2 text-right font-medium text-foreground">
-                    {formatCurrency(itemSubtotal(item))}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-border bg-secondary/40">
-              <td
-                colSpan={3}
-                className="px-2 py-2 text-right text-xs font-medium text-muted-foreground"
-              >
-                Subtotal {titulo.toLowerCase()}
-              </td>
-              <td className="px-2 py-2 text-right text-xs font-bold text-foreground">
-                {formatCurrency(subtotal)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function DocumentPreview({
-  draft,
-  empresa,
-}: {
-  draft: DocumentoDraft;
-  empresa: ConfiguracaoEmpresa;
-}) {
-  const { subtotalMaoDeObra, subtotalProdutos, subtotal, desconto, total } =
-    calcularTotais(draft);
-
-  return (
-    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed shadow-inner sm:p-5">
-      <div className="rounded-lg bg-primary px-3 py-3 text-primary-foreground sm:px-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={empresa.logo_base64 || "/shellton-logo.png"}
-              alt="Logo"
-              className="size-12 shrink-0 rounded-md bg-white/10 object-contain p-1"
-            />
-            <div className="min-w-0 break-words">
-              <p className="text-sm font-bold uppercase tracking-wide">
-                {empresa.nome_fantasia}
-              </p>
-              <p className="mt-1 text-[10px] opacity-90">
-                {empresa.razao_social}
-              </p>
-              <p className="mt-0.5 text-[10px] opacity-80">
-                CNPJ: {empresa.cnpj}
-                {empresa.inscricao_estadual &&
-                  ` · IE: ${empresa.inscricao_estadual}`}
-              </p>
-              <p className="mt-0.5 text-[10px] opacity-80">
-                {[empresa.endereco, empresa.cidade_uf].filter(Boolean).join(" — ")}
-              </p>
-              <p className="mt-0.5 text-[10px] opacity-80">
-                {[empresa.telefone, empresa.email].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-          </div>
-          <div className="shrink-0">
-            <p className="text-[10px] font-bold uppercase">
-              {DOCUMENTO_TIPO_LABEL[draft.tipo]}
-            </p>
-            <p className="mt-1 text-[9px] opacity-80">
-              Documento informativo — sem valor fiscal
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-1 text-muted-foreground">
-        <p>
-          <span className="text-foreground">Cliente:</span>{" "}
-          {draft.clienteNome || "—"}
-        </p>
-        {draft.cpfCnpj.trim() && (
-          <p>
-            <span className="text-foreground">CPF/CNPJ:</span>{" "}
-            {draft.cpfCnpj}
-          </p>
-        )}
-        {draft.telefone.trim() && (
-          <p>
-            <span className="text-foreground">WhatsApp:</span>{" "}
-            {formatPhoneDisplay(draft.telefone)}
-          </p>
-        )}
-        {(draft.modelo || draft.placa) && (
-          <p>
-            <span className="text-foreground">Veículo:</span>{" "}
-            {[draft.modelo, draft.placa.toUpperCase()].filter(Boolean).join(" · ")}
-          </p>
-        )}
-      </div>
-
-      <div className="mt-4 space-y-4">
-        <ItemTablePreview
-          titulo="Mão de obra"
-          itens={draft.maoDeObra}
-          subtotal={subtotalMaoDeObra}
-        />
-        <ItemTablePreview
-          titulo="Produtos / peças"
-          itens={draft.produtos}
-          subtotal={subtotalProdutos}
-        />
-      </div>
-
-      <div className="mt-4 space-y-1 border-t border-dashed border-border pt-3">
-        <div className="flex justify-between text-muted-foreground">
-          <span>Subtotal geral</span>
-          <span>{formatCurrency(subtotal)}</span>
-        </div>
-        {desconto > 0 && (
-          <div className="flex justify-between text-muted-foreground">
-            <span>Desconto</span>
-            <span>−{formatCurrency(desconto)}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-sm font-bold text-foreground">
-          <span>Total</span>
-          <span>{formatCurrency(total)}</span>
-        </div>
-      </div>
-
-      {draft.observacoes.trim() && (
-        <div className="mt-4 rounded-lg bg-secondary/40 p-3">
-          <p className="text-[10px] font-semibold uppercase text-foreground">
-            Observações
-          </p>
-          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-            {draft.observacoes}
-          </p>
-        </div>
-      )}
-
-      <div className="mt-4 space-y-2 border-t border-dashed border-border pt-4">
-        <p className="text-[10px] font-semibold uppercase text-foreground">
-          Assinaturas
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-dashed border-border p-3 text-center">
-            <div className="flex h-14 items-center justify-center text-[10px] text-muted-foreground">
-              Espaço para assinatura do cliente
-            </div>
-            <div className="mt-2 border-t border-border pt-2">
-              <p className="text-[10px] font-medium text-foreground">
-                {draft.clienteNome || "Cliente"}
-              </p>
-              <p className="text-[9px] text-muted-foreground">
-                Assinatura do cliente
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-border p-3 text-center">
-            <div className="flex h-14 items-center justify-center">
-              {empresa.assinatura_base64 ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={empresa.assinatura_base64}
-                  alt="Assinatura empresa"
-                  className="max-h-12 max-w-full object-contain"
-                />
-              ) : (
-                <span className="text-[10px] text-muted-foreground">
-                  Sem assinatura cadastrada
-                </span>
-              )}
-            </div>
-            <div className="mt-2 border-t border-border pt-2">
-              <p className="text-[10px] font-medium text-foreground">
-                {empresa.nome_fantasia}
-              </p>
-              {empresa.assinatura_responsavel && (
-                <p className="text-[9px] text-muted-foreground">
-                  {empresa.assinatura_responsavel}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { downloadDocumentoPdf, shareDocumentoPdf } from "@/lib/documento-pdf";
+import styles from "./documentos.module.css";
 
 type ItemLista = "maoDeObra" | "produtos";
+type Selection = { id: string; draft: DocumentoDraft };
+const MANUAL_ID = "__manual__";
+const DOCUMENTO_OPCOES: Record<
+  DocumentoTipo,
+  {
+    icon: LucideIcon;
+    label: string;
+    hint: string;
+    title: string;
+    description: string;
+    totalLabel: string;
+  }
+> = {
+  orcamento: {
+    icon: FileText,
+    label: "Orçamento",
+    hint: "Antes do serviço",
+    title: "Novo orçamento",
+    description:
+      "Apresente serviços, peças e valores para aprovação do cliente.",
+    totalLabel: "do orçamento",
+  },
+  recibo: {
+    icon: Receipt,
+    label: "Recibo",
+    hint: "Após a conclusão",
+    title: "Novo recibo",
+    description: "Registre os serviços concluídos e o valor do fechamento.",
+    totalLabel: "do recibo",
+  },
+  nota_servico: {
+    icon: ClipboardList,
+    label: "Nota de serviço",
+    hint: "Serviços realizados",
+    title: "Nova nota de serviço",
+    description:
+      "Detalhe os serviços realizados, as peças utilizadas e os valores.",
+    totalLabel: "da nota de serviço",
+  },
+};
+
+function formatMoneyInput(value: number): string {
+  return value > 0
+    ? value.toLocaleString("pt-BR", {
+        useGrouping: false,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "";
+}
+
+function FormSection({
+  step,
+  title,
+  description,
+  children,
+}: {
+  step: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={styles.panel}>
+      <header className={styles.panelHeader}>
+        <span className={styles.step}>{step}</span>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </header>
+      <div className={styles.panelBody}>{children}</div>
+    </section>
+  );
+}
+
+function CreateChoice({
+  tipo,
+  onClick,
+}: {
+  tipo: DocumentoTipo;
+  onClick: () => void;
+}) {
+  const { icon: Icon, title, description } = DOCUMENTO_OPCOES[tipo];
+  return (
+    <button type="button" className={styles.createCard} onClick={onClick}>
+      <span className={styles.createIcon}>
+        <Icon size={24} />
+      </span>
+      <div>
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <span>
+        Criar documento <ArrowRight size={16} />
+      </span>
+    </button>
+  );
+}
 
 function ItensEditor({
-  titulo,
-  descricao,
+  title,
+  description,
   icon: Icon,
-  itens,
+  items,
   onAdd,
   onUpdate,
   onRemove,
   placeholder,
-  allowEmpty,
-  scrollToItemId,
+  focusItem,
 }: {
-  titulo: string;
-  descricao: string;
-  icon: typeof Hammer;
-  itens: DocumentoItem[];
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  items: DocumentoItem[];
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<DocumentoItem>) => void;
   onRemove: (id: string) => void;
   placeholder: string;
-  allowEmpty?: boolean;
-  scrollToItemId?: string;
+  focusItem?: string;
 }) {
-  const itemIdsKey = itens.map((item) => item.id).join(",");
-  const [valoresEditados, setValoresEditados] = useState<Record<string, string>>(
-    () =>
-      Object.fromEntries(
-        itens.map((item) => [item.id, numberToCurrencyMask(item.valorUnitario)])
-      )
+  const itemIds = items.map((item) => item.id).join(",");
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      items.map((item) => [item.id, formatMoneyInput(item.valorUnitario)]),
+    ),
   );
-  const [syncedItemIds, setSyncedItemIds] = useState(itemIdsKey);
-
-  if (itemIdsKey !== syncedItemIds) {
-    setSyncedItemIds(itemIdsKey);
-    setValoresEditados((current) => {
-      const ids = new Set(itens.map((item) => item.id));
-      const next = Object.fromEntries(
-        Object.entries(current).filter(([id]) => ids.has(id))
-      );
-
-      for (const item of itens) {
-        if (!(item.id in next)) {
-          next[item.id] = numberToCurrencyMask(item.valorUnitario);
-        }
-      }
-      return next;
-    });
+  const [syncedIds, setSyncedIds] = useState(itemIds);
+  if (itemIds !== syncedIds) {
+    setSyncedIds(itemIds);
+    setValues((current) =>
+      Object.fromEntries(
+        items.map((item) => [
+          item.id,
+          current[item.id] ?? formatMoneyInput(item.valorUnitario),
+        ]),
+      ),
+    );
   }
-
-  // Depende só do id do item novo — incluir `itens` refocava a descrição a cada tecla.
   useEffect(() => {
-    if (!scrollToItemId) return;
-    const card = document.getElementById(`item-card-${scrollToItemId}`);
-    if (!card) return;
-
-    card.scrollIntoView({ behavior: "smooth", block: "center" });
-    card.querySelector<HTMLInputElement>("input")?.focus();
-  }, [scrollToItemId]);
+    if (!focusItem) return;
+    const field = document.getElementById(`descricao-${focusItem}`);
+    field?.focus({ preventScroll: true });
+    field?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "center",
+    });
+  }, [focusItem]);
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Icon className="size-4 shrink-0 text-primary" />
-            {titulo}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{descricao}</p>
+    <section>
+      <div className={styles.sectionTop}>
+        <div>
+          <h3>
+            <Icon size={17} />
+            {title}
+          </h3>
+          <p>{description}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" onClick={onAdd}>
+        <Button
+          type="button"
+          variant="outline"
+          className={styles.action}
+          onClick={onAdd}
+          aria-label={`Adicionar ${title.toLowerCase()}`}
+        >
           <Plus />
           Adicionar
         </Button>
       </div>
-
-      {itens.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] p-4 text-center text-sm text-muted-foreground">
-          Nenhum item. Clique em Adicionar.
-        </p>
+      {items.length === 0 ? (
+        <div className={styles.empty}>
+          <Icon size={22} />
+          <p>
+            Nenhum item adicionado.
+            <br />
+            Use Adicionar para incluir {title.toLowerCase()}.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-2.5">
-          {itens.map((item, idx) => (
-            <div
-              key={item.id}
-              id={`item-card-${item.id}`}
-              className="rounded-xl border border-white/[0.06] bg-black/25 p-3"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {titulo} {idx + 1}
-                </span>
-                {(allowEmpty || itens.length > 1) && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="size-7"
-                    onClick={() => onRemove(item.id)}
-                    aria-label="Remover item"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
-                )}
+        <div className={styles.itemList}>
+          {items.map((item, index) => (
+            <div className={styles.item} key={item.id}>
+              <div className={styles.itemHeading}>
+                <span>ITEM {String(index + 1).padStart(2, "0")}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={styles.removeItem}
+                  onClick={() => onRemove(item.id)}
+                  aria-label={`Remover ${title.toLowerCase()} ${index + 1}`}
+                >
+                  <Trash2 />
+                </Button>
               </div>
-              <div className="space-y-2">
+              <div className={styles.field}>
+                <Label htmlFor={`descricao-${item.id}`}>Descrição</Label>
                 <Input
-                  placeholder={placeholder}
+                  id={`descricao-${item.id}`}
                   value={item.descricao}
-                  onChange={(e) =>
-                    onUpdate(item.id, { descricao: e.target.value })
+                  placeholder={placeholder}
+                  onChange={(event) =>
+                    onUpdate(item.id, { descricao: event.target.value })
                   }
                 />
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Qtd.</Label>
-                    <MaskedInput
-                      mask="digits"
-                      maxLength={4}
-                      value={item.quantidade > 0 ? String(item.quantidade) : ""}
-                      placeholder="1"
-                      onValueChange={(v) =>
-                        onUpdate(item.id, {
-                          quantidade:
-                            v === "" ? 0 : Math.max(0, parseInt(v, 10) || 0),
-                        })
-                      }
-                      onBlur={(e) => {
-                        const n = parseInt(e.target.value, 10);
-                        if (!e.target.value || !Number.isFinite(n) || n <= 0) {
-                          onUpdate(item.id, { quantidade: 1 });
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Valor unit. (R$)</Label>
-                    <MaskedInput
-                      mask="currency"
-                      placeholder="0,00"
-                      value={
-                        valoresEditados[item.id] ??
-                        numberToCurrencyMask(item.valorUnitario)
-                      }
-                      onValueChange={(v) => {
-                        setValoresEditados((current) => ({
-                          ...current,
-                          [item.id]: v,
-                        }));
-                        onUpdate(item.id, {
-                          valorUnitario: currencyToNumber(v),
-                        });
-                      }}
-                      onBlur={() =>
-                        setValoresEditados((current) => {
-                          const raw = current[item.id] ?? "";
-                          return {
-                            ...current,
-                            [item.id]: numberToCurrencyMask(
-                              currencyToNumber(raw)
-                            ),
-                          };
-                        })
-                      }
-                    />
-                  </div>
+              </div>
+              <div className={styles.itemValues}>
+                <div className={styles.field}>
+                  <Label htmlFor={`quantidade-${item.id}`}>Quantidade</Label>
+                  <MaskedInput
+                    id={`quantidade-${item.id}`}
+                    mask="digits"
+                    maxLength={4}
+                    value={item.quantidade > 0 ? String(item.quantidade) : ""}
+                    placeholder="1"
+                    onValueChange={(value) =>
+                      onUpdate(item.id, {
+                        quantidade:
+                          value === ""
+                            ? 0
+                            : Math.max(0, parseInt(value, 10) || 0),
+                      })
+                    }
+                    onBlur={(event) => {
+                      if (!Number(event.target.value))
+                        onUpdate(item.id, { quantidade: 1 });
+                    }}
+                  />
                 </div>
-                <p className="text-right text-xs text-muted-foreground">
-                  Subtotal:{" "}
-                  <strong className="text-foreground">
-                    {formatCurrency(itemSubtotal(item))}
-                  </strong>
-                </p>
+                <div className={styles.field}>
+                  <Label htmlFor={`valor-${item.id}`}>
+                    Valor unitário (R$)
+                  </Label>
+                  <MaskedInput
+                    id={`valor-${item.id}`}
+                    mask="currency"
+                    placeholder="0,00"
+                    value={
+                      values[item.id] ?? formatMoneyInput(item.valorUnitario)
+                    }
+                    onValueChange={(value) => {
+                      setValues((current) => ({
+                        ...current,
+                        [item.id]: value,
+                      }));
+                      onUpdate(item.id, {
+                        valorUnitario: currencyToNumber(value),
+                      });
+                    }}
+                    onBlur={() =>
+                      setValues((current) => ({
+                        ...current,
+                        [item.id]: formatMoneyInput(
+                          currencyToNumber(current[item.id] ?? ""),
+                        ),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className={styles.itemTotal}>
+                <span>Subtotal do item</span>
+                <strong>{formatCurrency(itemSubtotal(item))}</strong>
               </div>
             </div>
           ))}
         </div>
       )}
-      {itens.length > 0 && (
-        <p className="text-right text-sm font-medium text-foreground">
-          Subtotal {titulo.toLowerCase()}:{" "}
-          <span className="text-primary">
-            {formatCurrency(somaItens(itens))}
-          </span>
-        </p>
+      {items.length > 0 && (
+        <div className={styles.sectionTotal}>
+          <span>Total de {title.toLowerCase()}</span>
+          <strong>{formatCurrency(somaItens(items))}</strong>
+        </div>
       )}
     </section>
   );
@@ -527,664 +343,775 @@ function ItensEditor({
 
 export function DocumentosPanel() {
   const { agendamentos, empresaConfig } = useDB();
+  const loading = useDBLoading();
   const empresa = resolveEmpresa(empresaConfig);
-  const [busca, setBusca] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DocumentoDraft | null>(null);
-  const [showPreview, setShowPreview] = useState(true);
-  const [novoItem, setNovoItem] = useState<{
-    lista: ItemLista;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draftRevision, setDraftRevision] = useState(0);
+  const [baseline, setBaseline] = useState("");
+  const [search, setSearch] = useState("");
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pending, setPending] = useState<Selection | null>(null);
+  const [busy, setBusy] = useState<"download" | "share" | null>(null);
+  const busyRef = useRef(false);
+  const [focusItem, setFocusItem] = useState<{
+    list: ItemLista;
     id: string;
   } | null>(null);
+  const [discountInput, setDiscountInput] = useState("");
+  const dirty = !!draft && JSON.stringify(draft) !== baseline;
 
-  // Libera o id após o ItensEditor focar o card (evita re-foco em re-renders).
-  useEffect(() => {
-    if (!novoItem) return;
-    const t = window.setTimeout(() => setNovoItem(null), 0);
-    return () => window.clearTimeout(t);
-  }, [novoItem]);
-
-  const elegiveis = useMemo(
+  const eligible = useMemo(
     () =>
       [...agendamentos]
-        .filter((a) => a.status !== "recusado")
+        .filter((item) => item.status !== "recusado")
         .sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         ),
-    [agendamentos]
+    [agendamentos],
   );
-
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return elegiveis;
-    return elegiveis.filter(
-      (a) =>
-        a.cliente_nome.toLowerCase().includes(q) ||
-        a.telefone.includes(q) ||
-        a.modelo.toLowerCase().includes(q) ||
-        a.placa.toLowerCase().includes(q) ||
-        a.servico_nome.toLowerCase().includes(q)
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("pt-BR");
+    const digits = query.replace(/\D/g, "");
+    return eligible.filter(
+      (item) =>
+        [
+          item.cliente_nome,
+          item.modelo,
+          item.placa,
+          item.servico_nome,
+          item.telefone,
+        ].some((value) => value.toLocaleLowerCase("pt-BR").includes(query)) ||
+        (!!digits &&
+          /^[-+().\s\d]+$/.test(query) &&
+          item.telefone.replace(/\D/g, "").includes(digits)),
     );
-  }, [elegiveis, busca]);
+  }, [eligible, search]);
 
-  const isManual = selectedId === MANUAL_ID;
-
-  function novoManual(tipo: DocumentoTipo = "orcamento") {
-    setSelectedId(MANUAL_ID);
-    setDraft(createEmptyDraft(tipo));
+  function activate(selection: Selection) {
+    setDraftRevision((revision) => revision + 1);
+    setSelectedId(selection.id);
+    setDraft(selection.draft);
+    setBaseline(JSON.stringify(selection.draft));
+    setDiscountInput(formatMoneyInput(selection.draft.desconto));
+    setFocusItem(null);
+    setPending(null);
+    setSourceOpen(false);
+    setPreviewOpen(false);
   }
 
-  function selecionar(a: Agendamento) {
-    setSelectedId(a.id);
-    setDraft(draftFromAgendamento(a));
+  function requestSelection(selection: Selection) {
+    setSourceOpen(false);
+    if (dirty) setPending(selection);
+    else activate(selection);
   }
-
+  function newManual(tipo: DocumentoTipo) {
+    requestSelection({ id: MANUAL_ID, draft: createEmptyDraft(tipo) });
+  }
+  function selectOrder(order: Agendamento) {
+    if (selectedId === order.id) {
+      setSourceOpen(false);
+      return;
+    }
+    requestSelection({ id: order.id, draft: draftFromAgendamento(order) });
+  }
   function updateDraft<K extends keyof DocumentoDraft>(
     key: K,
-    value: DocumentoDraft[K]
+    value: DocumentoDraft[K],
   ) {
-    setDraft((d) => (d ? { ...d, [key]: value } : d));
+    setDraft((current) => (current ? { ...current, [key]: value } : current));
   }
-
   function updateItem(
-    lista: ItemLista,
+    list: ItemLista,
     id: string,
-    patch: Partial<DocumentoItem>
+    patch: Partial<DocumentoItem>,
   ) {
-    setDraft((d) =>
-      d
+    setDraft((current) =>
+      current
         ? {
-            ...d,
-            [lista]: d[lista].map((i) =>
-              i.id === id ? { ...i, ...patch } : i
+            ...current,
+            [list]: current[list].map((item) =>
+              item.id === id ? { ...item, ...patch } : item,
             ),
           }
-        : d
+        : current,
     );
   }
-
-  function addItem(lista: ItemLista) {
+  function addItem(list: ItemLista) {
     const item = createEmptyItem();
-    setNovoItem({ lista, id: item.id });
-    setDraft((d) =>
-      d ? { ...d, [lista]: [...d[lista], item] } : d
+    setFocusItem({ list, id: item.id });
+    setDraft((current) =>
+      current ? { ...current, [list]: [...current[list], item] } : current,
+    );
+  }
+  function removeItem(list: ItemLista, id: string) {
+    setDraft((current) =>
+      current
+        ? { ...current, [list]: current[list].filter((item) => item.id !== id) }
+        : current,
     );
   }
 
-  function removeItem(lista: ItemLista, id: string) {
-    setDraft((d) =>
-      d ? { ...d, [lista]: d[lista].filter((i) => i.id !== id) } : d
-    );
-  }
-
-  function validarDraft(): boolean {
+  function validate(): boolean {
     if (!draft) return false;
     if (!draft.clienteNome.trim()) {
       toast.error("Informe o nome do cliente.");
+      setPreviewOpen(false);
+      document.getElementById("doc-nome")?.focus();
       return false;
     }
     if (!hasDocumentoItens(draft)) {
-      toast.error("Adicione pelo menos um item em mão de obra ou produtos.");
+      toast.error("Adicione pelo menos um serviço ou produto com descrição.");
+      setPreviewOpen(false);
       return false;
     }
     return true;
   }
 
-  async function baixarPdf() {
-    if (!draft || !validarDraft()) return;
-    try {
-      await downloadDocumentoPdf(draft, empresa);
-      toast.success("PDF baixado com sucesso.");
-    } catch {
-      toast.error("Não foi possível gerar o PDF.");
-    }
-  }
-
-  async function enviarWhatsApp() {
-    if (!draft || !validarDraft()) return;
-    if (!normalizeWhatsAppPhone(draft.telefone)) {
+  async function exportPdf(mode: "download" | "share") {
+    if (busyRef.current || !draft || !validate()) return;
+    if (mode === "share" && !normalizeWhatsAppPhone(draft.telefone)) {
       toast.error(
-        "Informe um WhatsApp válido para enviar. Para gerar o documento sem telefone, use Baixar PDF."
+        "Informe o WhatsApp do cliente para enviar. O download do PDF não exige telefone.",
       );
+      setPreviewOpen(false);
+      document.getElementById("doc-tel")?.focus();
       return;
     }
-
+    busyRef.current = true;
+    setBusy(mode);
     try {
-      const modo = await shareDocumentoPdf(draft, empresa);
-
-      if (modo === "shared") {
-        toast.success("PDF compartilhado. Escolha o WhatsApp na lista.");
-        return;
+      if (mode === "download") {
+        await downloadDocumentoPdf(draft, empresa);
+        toast.success("PDF baixado com sucesso.");
+      } else {
+        const result = await shareDocumentoPdf(draft, empresa);
+        if (result === "shared")
+          toast.success("PDF compartilhado. Escolha o WhatsApp na lista.");
+        else {
+          const url = buildWhatsAppUrl(
+            draft.telefone,
+            buildWhatsAppShortMessage(draft),
+          );
+          const opened = url
+            ? window.open(url, "_blank", "noopener,noreferrer")
+            : null;
+          toast.success(
+            "PDF baixado. Anexe o arquivo na conversa do WhatsApp.",
+            {
+              description: opened
+                ? "A mensagem de acompanhamento está pronta."
+                : "Se a conversa não abrir, abra o WhatsApp e escolha o cliente.",
+            },
+          );
+        }
       }
-
-      const url = buildWhatsAppUrl(
-        draft.telefone,
-        buildWhatsAppShortMessage(draft)
-      );
-      if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
-      toast.success("PDF baixado. Anexe o arquivo na conversa do WhatsApp.", {
-        description: "O WhatsApp foi aberto com a mensagem de acompanhamento.",
-      });
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      toast.error("Não foi possível gerar ou enviar o PDF.");
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError"))
+        toast.error(
+          "Não foi possível gerar ou compartilhar o PDF. Tente novamente.",
+        );
+    } finally {
+      busyRef.current = false;
+      setBusy(null);
     }
   }
 
-  const totais = draft ? calcularTotais(draft) : null;
+  const totals = draft ? calcularTotais(draft) : null;
+  const validItems = draft
+    ? [...draft.maoDeObra, ...draft.produtos].filter((item) =>
+        item.descricao.trim(),
+      ).length
+    : 0;
+  const exportButtons = (
+    <div className={styles.exportButtons}>
+      <Button
+        type="button"
+        onClick={() => void exportPdf("download")}
+        disabled={!!busy}
+      >
+        {busy === "download" ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <FileDown />
+        )}{" "}
+        {busy === "download" ? "Gerando PDF..." : "Baixar PDF"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => void exportPdf("share")}
+        disabled={!!busy}
+      >
+        {busy === "share" ? <Loader2 className="animate-spin" /> : <Send />}{" "}
+        {busy === "share" ? "Preparando envio..." : "Enviar pelo WhatsApp"}
+      </Button>
+    </div>
+  );
+
+  const DocumentoIcon = draft ? DOCUMENTO_OPCOES[draft.tipo].icon : FileText;
 
   return (
-    <div className="min-w-0 max-w-full space-y-5 overflow-x-hidden">
-      <div className="min-w-0">
-        <h2 className="text-lg font-semibold text-foreground">
-          Orçamentos e Recibos
-        </h2>
-        <p className="text-sm break-words text-muted-foreground">
-          Selecione um pedido do site ou crie um orçamento manual para clientes
-          avulsos. Gere o PDF e envie pelo WhatsApp.
-        </p>
-      </div>
+    <div className={styles.root}>
+      <header className={styles.pageHeader}>
+        <div>
+          <p className={styles.eyebrow}>DOCUMENTOS · SHELLTON</p>
+          <h1>Documentos da oficina</h1>
+          <p>
+            Orçamentos, recibos e notas de serviço. Organize os valores e
+            entregue um documento claro ao cliente.
+          </p>
+        </div>
+        <div className={styles.headerActions}>
+          <EmpresaConfigCard />
+          <Button
+            type="button"
+            className={styles.action}
+            disabled={!!busy}
+            onClick={() => setSourceOpen(true)}
+          >
+            <Plus />
+            Novo documento
+          </Button>
+        </div>
+      </header>
 
-      <EmpresaConfigCard />
-
-      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-        {/* Lista de pedidos */}
-        <aside className="min-w-0 lg:sticky lg:top-0 lg:self-start">
-          <Card className="overflow-hidden">
-            <CardHeader className="space-y-3 border-b border-white/[0.05] pb-4">
+      {!draft ? (
+        <section className={cn(styles.panel, styles.landing)}>
+          <div className={styles.landingIntro}>
+            <span className={styles.createIcon} style={{ marginBottom: 20 }}>
+              <FileText size={24} />
+            </span>
+            <h2>Seu próximo documento começa aqui.</h2>
+            <p>
+              Escolha o tipo de documento e preencha os dados do cliente. Você
+              também pode aproveitar um pedido recebido pelo site.
+            </p>
+          </div>
+          <div className={styles.createGrid}>
+            {DOCUMENTO_TIPOS.map((tipo) => (
+              <CreateChoice
+                key={tipo}
+                tipo={tipo}
+                onClick={() => newManual(tipo)}
+              />
+            ))}
+          </div>
+          <div className={styles.landingFooter}>
+            <p>
+              Já tem um agendamento?
+              <br />
+              Os dados do pedido podem ser preenchidos automaticamente.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.action}
+              onClick={() => setSourceOpen(true)}
+            >
+              <Inbox />
+              Usar pedido do site
+              <ArrowRight />
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className={styles.toolbar}>
+            <div className={styles.documentIdentity}>
+              <DocumentoIcon size={22} />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-                  Pedidos
+                <strong>
+                  {draft.clienteNome.trim() || "Documento em edição"}
+                </strong>
+                <p>
+                  {DOCUMENTO_TIPO_LABEL[draft.tipo]} ·{" "}
+                  {selectedId === MANUAL_ID
+                    ? "Cliente avulso"
+                    : "Pedido do site"}
                 </p>
-                <CardTitle className="mt-1 text-base">Origem do documento</CardTitle>
-                <CardDescription>
-                  Pedidos do site ou documento avulso.
-                </CardDescription>
               </div>
-              <div className="grid gap-2">
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={() => novoManual("orcamento")}
+            </div>
+            <div className={styles.toolbarActions}>
+              <Button
+                type="button"
+                variant="ghost"
+                className={styles.action}
+                disabled={!!busy}
+                onClick={() => setSourceOpen(true)}
+              >
+                <ArrowLeftRight />
+                Trocar documento
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className={styles.action}
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye />
+                Prévia do PDF
+              </Button>
+            </div>
+          </div>
+          <div className={styles.workspace}>
+            <div className={styles.editor}>
+              <FormSection
+                step="01"
+                title="Dados do documento"
+                description="Identifique o cliente e o veículo atendido."
+              >
+                <div
+                  className={styles.typePicker}
+                  role="group"
+                  aria-label="Tipo de documento"
                 >
-                  <Plus />
-                  Novo orçamento manual
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => novoManual("recibo")}
-                >
-                  <Receipt className="size-4" />
-                  Novo recibo manual
-                </Button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-3 pt-4">
-              {isManual && draft && (
-                <button
-                  type="button"
-                  onClick={() => novoManual(draft.tipo)}
-                  className="w-full cursor-pointer rounded-xl border border-primary/40 bg-primary/10 p-3.5 text-left ring-1 ring-primary/25"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 flex-1 break-words font-medium text-foreground">
-                      {draft.clienteNome.trim() || "Documento avulso"}
-                    </p>
-                    <Badge variant="secondary" className="shrink-0">
-                      Manual
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {DOCUMENTO_TIPO_LABEL[draft.tipo]} · preencha os dados ao lado
-                  </p>
-                </button>
-              )}
-
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, telefone, placa..."
-                  className="pl-9"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                />
-              </div>
-
-              {filtrados.length === 0 && !isManual ? (
-                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] p-6 text-center">
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-secondary/60 text-muted-foreground">
-                    <Inbox className="size-5" />
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {elegiveis.length === 0
-                      ? "Nenhum pedido pelo site ainda. Use os botões acima para criar um documento avulso."
-                      : "Nenhum resultado para a busca."}
-                  </p>
-                </div>
-              ) : filtrados.length > 0 ? (
-                <div className="max-h-[min(28rem,calc(100dvh-18rem))] space-y-2 overflow-y-auto overscroll-contain pr-1">
-                  {filtrados.map((a) => {
-                    const active = selectedId === a.id;
+                  {DOCUMENTO_TIPOS.map((id) => {
+                    const { icon: Icon, label, hint } = DOCUMENTO_OPCOES[id];
                     return (
                       <button
-                        key={a.id}
                         type="button"
-                        onClick={() => selecionar(a)}
-                        className={cn(
-                          "w-full min-h-11 cursor-pointer rounded-xl border p-3.5 text-left transition-all duration-200",
-                          active
-                            ? "border-primary/40 bg-primary/10 shadow-[0_0_24px_rgba(239,68,68,0.12)] ring-1 ring-primary/30"
-                            : "border-white/[0.06] bg-black/20 hover:border-primary/30 hover:bg-white/[0.03]"
-                        )}
+                        key={id}
+                        className={styles.typeOption}
+                        aria-pressed={draft.tipo === id}
+                        onClick={() => updateDraft("tipo", id)}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="min-w-0 flex-1 break-words font-medium text-foreground">
-                            {a.cliente_nome}
-                          </p>
-                          <div className="shrink-0">
-                            <StatusBadge status={a.status} />
-                          </div>
-                        </div>
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Phone className="size-3.5 text-primary" />
-                          {a.telefone}
-                        </p>
-                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Wrench className="size-3.5 text-primary" />
-                          {a.servico_nome}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-                          {a.modelo} · {a.placa.toUpperCase()} ·{" "}
-                          {formatDateTime(a.data_hora)}
-                        </p>
+                        <Icon size={20} />
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{hint}</small>
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              ) : null}
-
-              {elegiveis.length > 0 && (
-                <p className="text-center text-[11px] text-muted-foreground">
-                  Pedidos feitos pelo site
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </aside>
-
-        {/* Formulário + pré-visualização */}
-        {!draft ? (
-          <Card className="flex min-h-[420px] flex-col items-center justify-center gap-3 border-dashed p-10 text-center hover:border-white/[0.08]">
-            <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-[0_0_28px_rgba(239,68,68,0.15)]">
-              <FileText className="size-7" />
-            </span>
-            <p className="text-sm text-muted-foreground">
-              Selecione um pedido ou crie um orçamento/recibo manual.
-            </p>
-            <Button type="button" className="min-h-11" onClick={() => novoManual("orcamento")}>
-              <Plus />
-              Criar orçamento manual
-            </Button>
-          </Card>
-        ) : (
-          <div className="min-w-0 space-y-5">
-            {isManual && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">
-                  Documento avulso
-                </p>
-                <p className="mt-0.5 text-xs">
-                  Preencha os dados do cliente e os itens abaixo. Não é
-                  necessário agendamento pelo site.
-                </p>
-              </div>
-            )}
-
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] xl:items-start">
-              {/* Formulário */}
-              <div className="min-w-0 space-y-5">
-                <Card>
-                  <CardHeader className="border-b border-white/[0.05] pb-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-                      Formulário
-                    </p>
-                    <CardTitle className="mt-1 text-base">Dados do documento</CardTitle>
-                    <CardDescription>
-                      Tipo, cliente e veículo que aparecem no PDF.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-5">
-                    <div className="space-y-2">
-                      <Label>Tipo de documento</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(
-                          [
-                            { id: "orcamento" as DocumentoTipo, icon: FileText },
-                            { id: "recibo" as DocumentoTipo, icon: Receipt },
-                          ] as const
-                        ).map(({ id, icon: Icon }) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => updateDraft("tipo", id)}
-                            className={cn(
-                              "flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors",
-                              draft.tipo === id
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-white/[0.08] bg-black/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                            )}
-                          >
-                            <Icon className="size-4" />
-                            {DOCUMENTO_TIPO_LABEL[id]}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Orçamento para aprovação prévia; recibo após conclusão do
-                        serviço.
-                      </p>
-                    </div>
-
-                    <div className="h-px bg-white/[0.06]" />
-
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Cliente
-                      </p>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-nome">Nome</Label>
-                        <div className="relative">
-                          <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            id="doc-nome"
-                            className="pl-9"
-                            value={draft.clienteNome}
-                            onChange={(e) =>
-                              updateDraft("clienteNome", e.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-cpf-cnpj">CPF/CNPJ (opcional)</Label>
-                        <MaskedInput
-                          id="doc-cpf-cnpj"
-                          mask="cpfCnpj"
-                          placeholder="CPF ou CNPJ do cliente"
-                          value={draft.cpfCnpj}
-                          onValueChange={(v) => updateDraft("cpfCnpj", v)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-tel">WhatsApp (opcional)</Label>
-                        <div className="relative">
-                          <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                          <MaskedInput
-                            id="doc-tel"
-                            mask="phone"
-                            type="tel"
-                            className="pl-9"
-                            placeholder="(11) 99999-0000"
-                            value={draft.telefone}
-                            onValueChange={(v) => updateDraft("telefone", v)}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Necessário apenas para enviar pelo WhatsApp.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="h-px bg-white/[0.06]" />
-
-                    <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Veículo
-                      </p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="doc-modelo">Modelo</Label>
-                          <div className="relative">
-                            <Car className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              id="doc-modelo"
-                              className="pl-9"
-                              value={draft.modelo}
-                              onChange={(e) =>
-                                updateDraft("modelo", e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="doc-placa">Placa</Label>
-                          <MaskedInput
-                            id="doc-placa"
-                            mask="placa"
-                            placeholder="ABC1D23"
-                            value={draft.placa}
-                            onValueChange={(v) => updateDraft("placa", v)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="border-b border-white/[0.05] pb-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-                      Itens
-                    </p>
-                    <CardTitle className="mt-1 text-base">
-                      Serviços e produtos
-                    </CardTitle>
-                    <CardDescription>
-                      Monte a mão de obra e as peças que entram no documento.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6 pt-5">
-                    <ItensEditor
-                      titulo="Mão de obra"
-                      descricao="Serviços, diagnósticos e trabalhos executados."
-                      icon={Hammer}
-                      itens={draft.maoDeObra}
-                      onAdd={() => addItem("maoDeObra")}
-                      onUpdate={(id, patch) => updateItem("maoDeObra", id, patch)}
-                      onRemove={(id) => removeItem("maoDeObra", id)}
-                      placeholder="Ex.: Troca de óleo, alinhamento, revisão"
-                      scrollToItemId={
-                        novoItem?.lista === "maoDeObra" ? novoItem.id : undefined
-                      }
-                    />
-
-                    <div className="h-px bg-white/[0.06]" />
-
-                    <ItensEditor
-                      titulo="Produtos / peças"
-                      descricao="Peças, fluidos e materiais utilizados."
-                      icon={Package}
-                      itens={draft.produtos}
-                      onAdd={() => addItem("produtos")}
-                      onUpdate={(id, patch) => updateItem("produtos", id, patch)}
-                      onRemove={(id) => removeItem("produtos", id)}
-                      placeholder="Ex.: Filtro de óleo, pastilha de freio"
-                      allowEmpty
-                      scrollToItemId={
-                        novoItem?.lista === "produtos" ? novoItem.id : undefined
-                      }
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="border-b border-white/[0.05] pb-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-                      Fechamento
-                    </p>
-                    <CardTitle className="mt-1 text-base">
-                      Totais e observações
-                    </CardTitle>
-                    <CardDescription>
-                      Desconto, resumo financeiro e condições do documento.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="doc-desconto">Desconto (R$)</Label>
-                      <MaskedInput
-                        id="doc-desconto"
-                        mask="currency"
-                        placeholder="0,00"
-                        value={numberToCurrencyMask(draft.desconto)}
-                        onValueChange={(v) =>
-                          updateDraft("desconto", currencyToNumber(v))
+                <div className={styles.divider} />
+                <section>
+                  <h3 className={styles.sectionLabel}>Cliente</h3>
+                  <div className={styles.fieldGrid}>
+                    <div className={cn(styles.field, styles.fullWidth)}>
+                      <Label htmlFor="doc-nome">
+                        Nome do cliente{" "}
+                        <span aria-hidden="true" className="text-primary">
+                          *
+                        </span>
+                      </Label>
+                      <Input
+                        id="doc-nome"
+                        autoComplete="name"
+                        placeholder="Nome completo ou razão social"
+                        value={draft.clienteNome}
+                        onChange={(event) =>
+                          updateDraft("clienteNome", event.target.value)
                         }
+                        aria-required="true"
                       />
                     </div>
+                    <div className={styles.field}>
+                      <Label htmlFor="doc-cpf-cnpj">
+                        CPF/CNPJ{" "}
+                        <span className="text-muted-foreground font-normal">
+                          (opcional)
+                        </span>
+                      </Label>
+                      <MaskedInput
+                        id="doc-cpf-cnpj"
+                        mask="cpfCnpj"
+                        placeholder="CPF ou CNPJ"
+                        value={draft.cpfCnpj}
+                        onValueChange={(value) => updateDraft("cpfCnpj", value)}
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <Label htmlFor="doc-tel">
+                        WhatsApp{" "}
+                        <span className="text-muted-foreground font-normal">
+                          (opcional)
+                        </span>
+                      </Label>
+                      <MaskedInput
+                        id="doc-tel"
+                        mask="phone"
+                        type="tel"
+                        autoComplete="tel-national"
+                        placeholder="(00) 00000-0000"
+                        value={draft.telefone}
+                        onValueChange={(value) =>
+                          updateDraft("telefone", value)
+                        }
+                        aria-describedby="doc-tel-hint"
+                      />
+                      <p id="doc-tel-hint">
+                        Necessário apenas para enviar pelo WhatsApp.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+                <div className={styles.divider} />
+                <section>
+                  <h3 className={styles.sectionLabel}>
+                    Veículo{" "}
+                    <span className="normal-case tracking-normal font-normal">
+                      · opcional
+                    </span>
+                  </h3>
+                  <VehicleFields
+                    key={draftRevision}
+                    value={draft.modelo}
+                    selection={draft.veiculo}
+                    onChange={(modelo, veiculo) =>
+                      setDraft((current) =>
+                        current ? { ...current, modelo, veiculo } : current,
+                      )
+                    }
+                  >
+                    <div className={styles.field}>
+                      <Label htmlFor="doc-placa">Placa</Label>
+                      <MaskedInput
+                        id="doc-placa"
+                        mask="placa"
+                        placeholder="ABC1D23"
+                        value={draft.placa}
+                        onValueChange={(value) => updateDraft("placa", value)}
+                      />
+                    </div>
+                  </VehicleFields>
+                </section>
+              </FormSection>
 
-                    {totais && (
-                      <div className="rounded-xl border border-white/[0.06] bg-black/25 p-4 text-sm">
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Mão de obra</span>
-                          <span>{formatCurrency(totais.subtotalMaoDeObra)}</span>
-                        </div>
-                        <div className="mt-1 flex justify-between text-muted-foreground">
-                          <span>Produtos / peças</span>
-                          <span>{formatCurrency(totais.subtotalProdutos)}</span>
-                        </div>
-                        <div className="mt-1 flex justify-between border-t border-white/[0.06] pt-1 text-muted-foreground">
-                          <span>Subtotal geral</span>
-                          <span>{formatCurrency(totais.subtotal)}</span>
-                        </div>
-                        {totais.desconto > 0 && (
-                          <div className="mt-1 flex justify-between text-muted-foreground">
-                            <span>Desconto</span>
-                            <span>−{formatCurrency(totais.desconto)}</span>
-                          </div>
-                        )}
-                        <div className="mt-2 flex justify-between border-t border-white/[0.08] pt-2 text-base font-bold text-foreground">
-                          <span>Total</span>
-                          <span className="text-primary">
-                            {formatCurrency(totais.total)}
-                          </span>
-                        </div>
+              <FormSection
+                step="02"
+                title="Serviços e produtos"
+                description="Separe a mão de obra das peças e materiais utilizados."
+              >
+                <ItensEditor
+                  title="Mão de obra"
+                  description="Serviços, diagnósticos e trabalhos executados."
+                  icon={Hammer}
+                  items={draft.maoDeObra}
+                  onAdd={() => addItem("maoDeObra")}
+                  onUpdate={(id, patch) => updateItem("maoDeObra", id, patch)}
+                  onRemove={(id) => removeItem("maoDeObra", id)}
+                  placeholder="Ex.: Troca de óleo e revisão"
+                  focusItem={
+                    focusItem?.list === "maoDeObra" ? focusItem.id : undefined
+                  }
+                />
+                <div className={styles.divider} />
+                <ItensEditor
+                  title="Produtos / peças"
+                  description="Peças, fluidos e materiais do atendimento."
+                  icon={Package}
+                  items={draft.produtos}
+                  onAdd={() => addItem("produtos")}
+                  onUpdate={(id, patch) => updateItem("produtos", id, patch)}
+                  onRemove={(id) => removeItem("produtos", id)}
+                  placeholder="Ex.: Filtro de óleo"
+                  focusItem={
+                    focusItem?.list === "produtos" ? focusItem.id : undefined
+                  }
+                />
+              </FormSection>
+
+              <FormSection
+                step="03"
+                title="Condições e observações"
+                description="Finalize o desconto e as informações que o cliente precisa receber."
+              >
+                <div className={styles.field}>
+                  <Label htmlFor="doc-desconto">Desconto (R$)</Label>
+                  <MaskedInput
+                    id="doc-desconto"
+                    mask="currency"
+                    placeholder="0,00"
+                    value={discountInput}
+                    onValueChange={(value) => {
+                      setDiscountInput(value);
+                      updateDraft("desconto", currencyToNumber(value));
+                    }}
+                    onBlur={() =>
+                      setDiscountInput(formatMoneyInput(draft.desconto))
+                    }
+                    aria-describedby="discount-hint"
+                  />
+                  <p id="discount-hint">
+                    O desconto é aplicado ao total de serviços e produtos.
+                  </p>
+                  {totals && totals.desconto > totals.subtotal && (
+                    <p className="text-amber-400" role="status">
+                      O desconto supera o subtotal. O total do documento será R$
+                      0,00.
+                    </p>
+                  )}
+                </div>
+                <div className={styles.field}>
+                  <Label htmlFor="doc-obs">
+                    Observações{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (opcional)
+                    </span>
+                  </Label>
+                  <Textarea
+                    id="doc-obs"
+                    rows={4}
+                    placeholder={
+                      draft.tipo === "orcamento"
+                        ? "Validade do orçamento, garantia, condições de pagamento..."
+                        : "Garantia, condições de pagamento e detalhes dos serviços..."
+                    }
+                    value={draft.observacoes}
+                    onChange={(event) =>
+                      updateDraft("observacoes", event.target.value)
+                    }
+                  />
+                </div>
+              </FormSection>
+            </div>
+
+            <aside className={styles.sidebar} aria-label="Resumo e exportação">
+              {totals && (
+                <section className={cn(styles.panel, styles.summary)}>
+                  <div className={styles.summaryHeader}>
+                    <h2>Resumo do documento</h2>
+                    <span className={styles.tag}>
+                      {validItems} {validItems === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+                  <dl className={styles.summaryRows}>
+                    <div>
+                      <dt>Mão de obra</dt>
+                      <dd>{formatCurrency(totals.subtotalMaoDeObra)}</dd>
+                    </div>
+                    <div>
+                      <dt>Produtos / peças</dt>
+                      <dd>{formatCurrency(totals.subtotalProdutos)}</dd>
+                    </div>
+                    <div>
+                      <dt>Subtotal</dt>
+                      <dd>{formatCurrency(totals.subtotal)}</dd>
+                    </div>
+                    {totals.desconto > 0 && (
+                      <div>
+                        <dt>Desconto</dt>
+                        <dd>− {formatCurrency(totals.desconto)}</dd>
                       </div>
                     )}
-
-                    <div className="h-px bg-white/[0.06]" />
-
-                    <div className="space-y-2">
-                      <Label htmlFor="doc-obs">Observações</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Validade do orçamento, garantia, condições de pagamento,
-                        etc.
+                  </dl>
+                  <div className={styles.totalBox}>
+                    <p>Valor total {DOCUMENTO_OPCOES[draft.tipo].totalLabel}</p>
+                    <strong>{formatCurrency(totals.total)}</strong>
+                  </div>
+                  <div className={styles.checklist}>
+                    {[
+                      {
+                        ready: !!draft.clienteNome.trim(),
+                        label: draft.clienteNome.trim()
+                          ? "Cliente identificado"
+                          : "Preencha o nome do cliente",
+                      },
+                      {
+                        ready: validItems > 0,
+                        label:
+                          validItems > 0
+                            ? "Serviços ou produtos adicionados"
+                            : "Adicione um serviço ou produto",
+                      },
+                    ].map(({ ready, label }) => (
+                      <p key={label} data-ready={ready}>
+                        {ready ? (
+                          <CheckCircle2 size={15} />
+                        ) : (
+                          <Circle size={15} />
+                        )}
+                        {label}
                       </p>
-                      <Textarea
-                        id="doc-obs"
-                        rows={4}
-                        value={draft.observacoes}
-                        onChange={(e) =>
-                          updateDraft("observacoes", e.target.value)
-                        }
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    ))}
+                  </div>
+                  {exportButtons}
+                  <p className={styles.exportHint}>
+                    {draft.telefone.trim()
+                      ? `WhatsApp: ${formatPhoneDisplay(draft.telefone)}. No computador, anexe o PDF baixado à conversa.`
+                      : "Você pode baixar o PDF sem telefone. Para enviar pelo WhatsApp, informe o número do cliente."}
+                  </p>
+                </section>
+              )}
+              <section className={cn(styles.panel, styles.previewPanel)}>
+                <div className={styles.previewHeader}>
+                  <div>
+                    <h2>Prévia do documento</h2>
+                    <p>Confira os dados antes de enviar.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={styles.action}
+                    onClick={() => setPreviewOpen(true)}
+                    aria-label="Ampliar prévia"
+                  >
+                    <Eye />
+                  </Button>
+                </div>
+                <div className={styles.previewBody}>
+                  <DocumentoPreview draft={draft} empresa={empresa} />
+                </div>
+              </section>
+            </aside>
+          </div>
+        </>
+      )}
 
-              {/* Pré-visualização + envio */}
-              <div className="min-w-0 space-y-4 xl:sticky xl:top-0 xl:max-h-[calc(100dvh-2rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain">
-                <Card className="overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-white/[0.05] pb-4">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">
-                        Pré-visualização
-                      </p>
-                      <CardTitle className="mt-1 text-base">Prévia do PDF</CardTitle>
-                      <CardDescription>
-                        Formato de planilha, como no arquivo gerado.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowPreview((v) => !v)}
-                    >
-                      <Eye className="size-4" />
-                      {showPreview ? "Ocultar" : "Mostrar"}
-                    </Button>
-                  </CardHeader>
-                  {showPreview && (
-                    <CardContent className="overflow-x-auto pt-4">
-                      <DocumentPreview draft={draft} empresa={empresa} />
-                    </CardContent>
-                  )}
-                </Card>
-
-                <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent">
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/20 sm:size-12">
-                          <MessageCircle className="size-5 sm:size-6" />
-                        </div>
-                        <div className="min-w-0 flex-1 space-y-1.5">
-                          <p className="text-sm font-semibold leading-snug text-foreground">
-                            {draft.telefone.trim() ? (
-                              <>
-                                Enviar para{" "}
-                                <span className="break-all font-mono text-primary sm:break-normal">
-                                  {formatPhoneDisplay(draft.telefone)}
-                                </span>
-                              </>
-                            ) : (
-                              "Baixar documento"
-                            )}
-                          </p>
-                          <p className="text-xs leading-relaxed text-muted-foreground">
-                            Gera um PDF em formato de planilha. No celular,
-                            compartilhe direto no WhatsApp; no computador, o
-                            arquivo é baixado para você anexar.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <Button
-                          type="button"
-                          size="lg"
-                          variant="outline"
-                          className="h-auto min-h-12 w-full whitespace-normal px-4 py-3 text-sm"
-                          onClick={() => void baixarPdf()}
-                        >
-                          <FileDown className="size-4 shrink-0" />
-                          Baixar PDF
-                        </Button>
-                        <Button
-                          type="button"
-                          size="lg"
-                          className="h-auto min-h-12 w-full whitespace-normal px-4 py-3 text-sm leading-snug sm:min-h-[3rem]"
-                          onClick={() => void enviarWhatsApp()}
-                        >
-                          <Send className="size-4 shrink-0" />
-                          Enviar PDF no WhatsApp
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+      <DocumentoModal
+        open={sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        title="Novo documento"
+        description="Comece do zero ou aproveite os dados de um pedido do site."
+      >
+        <div className={styles.sourceChoices}>
+          {DOCUMENTO_TIPOS.map((tipo) => (
+            <CreateChoice
+              key={tipo}
+              tipo={tipo}
+              onClick={() => newManual(tipo)}
+            />
+          ))}
+        </div>
+        <div className={styles.ordersHeader}>
+          <h3>Pedidos do site</h3>
+          <span className={styles.tag}>
+            {eligible.length} {eligible.length === 1 ? "pedido" : "pedidos"}
+          </span>
+        </div>
+        <div className={styles.search}>
+          <Search size={18} />
+          <Input
+            aria-label="Buscar pedidos"
+            placeholder="Nome, placa, serviço ou telefone"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        {loading ? (
+          <div className={styles.empty} role="status">
+            <Loader2 size={22} className="animate-spin" />
+            <p>Carregando pedidos...</p>
+          </div>
+        ) : filtered.length ? (
+          <div className={styles.orderList}>
+            {filtered.map((order) => (
+              <button
+                className={styles.order}
+                type="button"
+                key={order.id}
+                onClick={() => selectOrder(order)}
+              >
+                <div>
+                  <strong>{order.cliente_nome}</strong>
+                  <Badge
+                    variant={
+                      order.status === "aprovado" ? "success" : "warning"
+                    }
+                  >
+                    {AGENDAMENTO_STATUS_LABEL[order.status]}
+                  </Badge>
+                </div>
+                <p>
+                  {order.servico_nome}
+                  <br />
+                  {[order.modelo, order.placa.toUpperCase()]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  <br />
+                  {formatDateTime(order.data_hora)}
+                </p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.empty}>
+            <Inbox size={26} />
+            <p>
+              {eligible.length
+                ? "Nenhum pedido encontrado. Tente outro nome ou placa."
+                : "Nenhum pedido disponível. Crie um documento avulso acima."}
+            </p>
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                className={styles.action}
+                onClick={() => setSearch("")}
+              >
+                Limpar busca
+              </Button>
+            )}
           </div>
         )}
-      </div>
+      </DocumentoModal>
+
+      <DocumentoModal
+        open={!!pending}
+        onClose={() => setPending(null)}
+        title="Substituir documento?"
+        description="O documento atual tem alterações em edição."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPending(null)}
+            >
+              Continuar editando
+            </Button>
+            <Button type="button" onClick={() => pending && activate(pending)}>
+              Substituir documento
+            </Button>
+          </>
+        }
+      >
+        <p className={styles.notice}>
+          Ao continuar, os dados e itens atuais serão substituídos. Você pode
+          voltar à edição para baixar o PDF antes de começar outro documento.
+        </p>
+      </DocumentoModal>
+
+      <DocumentoModal
+        open={previewOpen && !!draft}
+        onClose={() => setPreviewOpen(false)}
+        title="Prévia do PDF"
+        description="Revise o cliente, os itens e o total antes de baixar ou enviar."
+        wide
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreviewOpen(false)}
+            >
+              Voltar à edição
+            </Button>
+            <Button
+              type="button"
+              disabled={!!busy}
+              onClick={() => void exportPdf("download")}
+            >
+              {busy === "download" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <FileDown />
+              )}
+              {busy === "download" ? "Gerando PDF..." : "Baixar PDF"}
+            </Button>
+          </>
+        }
+      >
+        {draft && (
+          <div className={styles.modalPreview}>
+            <DocumentoPreview draft={draft} empresa={empresa} />
+          </div>
+        )}
+      </DocumentoModal>
     </div>
   );
 }

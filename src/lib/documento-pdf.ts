@@ -2,9 +2,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { ConfiguracaoEmpresa } from "./types";
 import { resolveLogoForPdf } from "./empresa-logo";
+import { maskCnpj } from "./masks";
 import {
   type DocumentoDraft,
   type DocumentoItem,
+  type DocumentoTipo,
   DOCUMENTO_TIPO_LABEL,
   buildWhatsAppShortMessage,
   calcularTotais,
@@ -16,9 +18,8 @@ import {
 const BRAND = { r: 225, g: 29, b: 42 };
 
 function tableFinalY(doc: jsPDF): number {
-  const meta = (
-    doc as jsPDF & { lastAutoTable?: { finalY: number } }
-  ).lastAutoTable;
+  const meta = (doc as jsPDF & { lastAutoTable?: { finalY: number } })
+    .lastAutoTable;
   return meta?.finalY ?? 40;
 }
 
@@ -33,7 +34,7 @@ function renderEmpresaHeader(
   draft: DocumentoDraft,
   margin: number,
   pageWidth: number,
-  logoDataUrl: string | null
+  logoDataUrl: string | null,
 ): number {
   const headerH = 40;
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
@@ -51,7 +52,7 @@ function renderEmpresaHeader(
         margin,
         logoY,
         logoSize,
-        logoSize
+        logoSize,
       );
       textX = margin + logoSize + 4;
     } catch {
@@ -68,13 +69,18 @@ function renderEmpresaHeader(
   doc.setFontSize(7.5);
   const infoLines: string[] = [
     empresa.razao_social,
-    `CNPJ: ${empresa.cnpj}${
+    `CNPJ: ${maskCnpj(empresa.cnpj)}${
       empresa.inscricao_estadual.trim()
         ? `  ·  IE: ${empresa.inscricao_estadual}`
         : ""
     }`,
     [empresa.endereco, empresa.cidade_uf].filter(Boolean).join(" — "),
-    [empresa.telefone, empresa.email].filter(Boolean).join("  ·  "),
+    [
+      empresa.telefone ? formatPhoneDisplay(empresa.telefone) : "",
+      empresa.email,
+    ]
+      .filter(Boolean)
+      .join("  ·  "),
   ].filter(Boolean);
 
   let ly = 17;
@@ -113,7 +119,7 @@ function renderAssinaturas(
   pageWidth: number,
   pageHeight: number,
   empresa: ConfiguracaoEmpresa,
-  clienteNome: string
+  clienteNome: string,
 ): void {
   const boxH = 24;
   const needed = boxH + 28;
@@ -142,19 +148,21 @@ function renderAssinaturas(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(140, 140, 140);
-  doc.text("Espaço para assinatura do cliente", leftX + colW / 2, y + boxH / 2, {
-    align: "center",
-  });
+  doc.text(
+    "Espaço para assinatura do cliente",
+    leftX + colW / 2,
+    y + boxH / 2,
+    {
+      align: "center",
+    },
+  );
   doc.setDrawColor(120, 120, 120);
   doc.line(leftX + 8, y + boxH - 6, leftX + colW - 8, y + boxH - 6);
   doc.setFontSize(7.5);
   doc.setTextColor(35, 35, 35);
-  doc.text(
-    clienteNome.trim() || "Cliente",
-    leftX + colW / 2,
-    y + boxH + 5,
-    { align: "center" }
-  );
+  doc.text(clienteNome.trim() || "Cliente", leftX + colW / 2, y + boxH + 5, {
+    align: "center",
+  });
   doc.setFontSize(6.5);
   doc.setTextColor(120, 120, 120);
   doc.text("Assinatura do cliente", leftX + colW / 2, y + boxH + 9, {
@@ -173,7 +181,7 @@ function renderAssinaturas(
         rightX + 6,
         y + 2,
         colW - 12,
-        boxH - 8
+        boxH - 8,
       );
     } catch {
       doc.setFontSize(7);
@@ -200,7 +208,12 @@ function renderAssinaturas(
 }
 
 export function buildDocumentoFilename(draft: DocumentoDraft): string {
-  const tipo = draft.tipo === "orcamento" ? "orcamento" : "recibo";
+  const nomes: Record<DocumentoTipo, string> = {
+    orcamento: "orcamento",
+    recibo: "recibo",
+    nota_servico: "nota-de-servico",
+  };
+  const tipo = nomes[draft.tipo];
   const nome =
     draft.clienteNome
       .trim()
@@ -219,7 +232,7 @@ function renderItemTable(
   y: number,
   margin: number,
   titulo: string,
-  itens: DocumentoItem[]
+  itens: DocumentoItem[],
 ): number {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -269,7 +282,7 @@ function renderItemTable(
 
 export async function buildDocumentoPdf(
   draft: DocumentoDraft,
-  empresa: ConfiguracaoEmpresa
+  empresa: ConfiguracaoEmpresa,
 ): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const logoDataUrl = await resolveLogoForPdf(empresa);
@@ -285,19 +298,27 @@ export async function buildDocumentoPdf(
     draft,
     margin,
     pageWidth,
-    logoDataUrl
+    logoDataUrl,
   );
   doc.setTextColor(35, 35, 35);
 
   // Bloco do cliente
+  const veiculo = [draft.modelo.trim(), draft.placa.trim().toUpperCase()]
+    .filter(Boolean)
+    .join(" · ");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   const clienteLines = [
     `Nome: ${draft.clienteNome.trim() || "—"}`,
     ...(draft.cpfCnpj.trim() ? [`CPF/CNPJ: ${draft.cpfCnpj.trim()}`] : []),
     ...(draft.telefone.trim()
       ? [`WhatsApp: ${formatPhoneDisplay(draft.telefone)}`]
       : []),
-  ];
-  const clienteHeight = Math.max(30, 16 + clienteLines.length * 7);
+    ...(veiculo ? [`Veículo: ${veiculo}`] : []),
+  ].flatMap(
+    (line) => doc.splitTextToSize(line, pageWidth - margin * 2 - 8) as string[],
+  );
+  const clienteHeight = Math.max(30, 16 + clienteLines.length * 5);
   doc.setFillColor(248, 248, 248);
   doc.setDrawColor(220, 220, 220);
   doc.roundedRect(margin, y, pageWidth - margin * 2, clienteHeight, 2, 2, "FD");
@@ -307,14 +328,8 @@ export async function buildDocumentoPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   clienteLines.forEach((line, index) => {
-    doc.text(line, margin + 4, y + 14 + index * 7);
+    doc.text(line, margin + 4, y + 14 + index * 5);
   });
-  const veiculo = [draft.modelo.trim(), draft.placa.trim().toUpperCase()]
-    .filter(Boolean)
-    .join(" · ");
-  if (veiculo) {
-    doc.text(`Veículo: ${veiculo}`, margin + 95, y + 14);
-  }
 
   y += clienteHeight + 6;
 
@@ -364,7 +379,7 @@ export async function buildDocumentoPdf(
     doc.setTextColor(70, 70, 70);
     const lines = doc.splitTextToSize(
       draft.observacoes.trim(),
-      pageWidth - margin * 2
+      pageWidth - margin * 2,
     );
     doc.text(lines, margin, y);
     y += lines.length * 4.2 + 4;
@@ -377,7 +392,7 @@ export async function buildDocumentoPdf(
     pageWidth,
     pageHeight,
     empresa,
-    draft.clienteNome
+    draft.clienteNome,
   );
 
   doc.setFontSize(7.5);
@@ -386,7 +401,7 @@ export async function buildDocumentoPdf(
     `${empresa.nome_fantasia} — Documento informativo. Não substitui nota fiscal.`,
     pageWidth / 2,
     pageHeight - 10,
-    { align: "center" }
+    { align: "center" },
   );
 
   return doc;
@@ -394,7 +409,7 @@ export async function buildDocumentoPdf(
 
 export async function downloadDocumentoPdf(
   draft: DocumentoDraft,
-  empresa: ConfiguracaoEmpresa
+  empresa: ConfiguracaoEmpresa,
 ): Promise<void> {
   const doc = await buildDocumentoPdf(draft, empresa);
   doc.save(buildDocumentoFilename(draft));
@@ -402,7 +417,7 @@ export async function downloadDocumentoPdf(
 
 export async function documentoPdfBlob(
   draft: DocumentoDraft,
-  empresa: ConfiguracaoEmpresa
+  empresa: ConfiguracaoEmpresa,
 ): Promise<Blob> {
   const doc = await buildDocumentoPdf(draft, empresa);
   return doc.output("blob");
@@ -410,7 +425,7 @@ export async function documentoPdfBlob(
 
 export async function shareDocumentoPdf(
   draft: DocumentoDraft,
-  empresa: ConfiguracaoEmpresa
+  empresa: ConfiguracaoEmpresa,
 ): Promise<"shared" | "downloaded"> {
   const filename = buildDocumentoFilename(draft);
   const blob = await documentoPdfBlob(draft, empresa);

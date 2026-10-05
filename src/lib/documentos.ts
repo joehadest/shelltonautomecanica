@@ -1,8 +1,10 @@
 import { generateId } from "@/lib/utils";
 import { maskPhone, maskPlaca } from "@/lib/masks";
 import type { Agendamento } from "@/lib/types";
+import type { VehicleSelection } from "@/lib/vehicle-catalog";
 
-export type DocumentoTipo = "orcamento" | "recibo";
+export const DOCUMENTO_TIPOS = ["orcamento", "recibo", "nota_servico"] as const;
+export type DocumentoTipo = (typeof DOCUMENTO_TIPOS)[number];
 
 export interface DocumentoItem {
   id: string;
@@ -17,6 +19,7 @@ export interface DocumentoDraft {
   cpfCnpj: string;
   telefone: string;
   modelo: string;
+  veiculo?: VehicleSelection;
   placa: string;
   maoDeObra: DocumentoItem[];
   produtos: DocumentoItem[];
@@ -27,6 +30,7 @@ export interface DocumentoDraft {
 export const DOCUMENTO_TIPO_LABEL: Record<DocumentoTipo, string> = {
   orcamento: "Orçamento",
   recibo: "Recibo de Fechamento",
+  nota_servico: "Nota de serviço",
 };
 
 export function formatCurrency(value: number): string {
@@ -74,7 +78,9 @@ export function createEmptyItem(descricao = ""): DocumentoItem {
   };
 }
 
-export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDraft {
+export function createEmptyDraft(
+  tipo: DocumentoTipo = "orcamento",
+): DocumentoDraft {
   return {
     tipo,
     clienteNome: "",
@@ -90,8 +96,7 @@ export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDr
 }
 
 export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
-  const tipo: DocumentoTipo =
-    a.status === "aprovado" ? "recibo" : "orcamento";
+  const tipo: DocumentoTipo = a.status === "aprovado" ? "recibo" : "orcamento";
 
   return {
     tipo,
@@ -132,7 +137,10 @@ export function normalizeWhatsAppPhone(phone: string): string | null {
   return digits;
 }
 
-export function buildWhatsAppUrl(phone: string, message: string): string | null {
+export function buildWhatsAppUrl(
+  phone: string,
+  message: string,
+): string | null {
   const normalized = normalizeWhatsAppPhone(phone);
   if (!normalized) return null;
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
@@ -140,16 +148,15 @@ export function buildWhatsAppUrl(phone: string, message: string): string | null 
 
 /** Mensagem curta para acompanhar o PDF no WhatsApp. */
 export function buildWhatsAppShortMessage(draft: DocumentoDraft): string {
-  const tipo =
-    draft.tipo === "orcamento" ? "orçamento" : "recibo de fechamento";
-  const primeiroNome =
-    draft.clienteNome.trim().split(/\s+/)[0] || "cliente";
+  const tipo = DOCUMENTO_TIPO_LABEL[draft.tipo].toLocaleLowerCase("pt-BR");
+  const possessivo = draft.tipo === "nota_servico" ? "sua" : "seu";
+  const primeiroNome = draft.clienteNome.trim().split(/\s+/)[0] || "cliente";
   const { total } = calcularTotais(draft);
 
   return [
     `Olá, ${primeiroNome}! 👋`,
     ``,
-    `Segue seu *${tipo}* da *Shellton Auto Mecânica*.`,
+    `Segue ${possessivo} *${tipo}* da *Shellton Auto Mecânica*.`,
     ``,
     `💰 *Total: ${formatCurrency(total)}*`,
     ``,
@@ -213,7 +220,7 @@ export function buildWhatsAppMessage(draft: DocumentoDraft): string {
     `*Resumo financeiro:*`,
     `Mão de obra: ${formatCurrency(calcularTotais(draft).subtotalMaoDeObra)}`,
     `Produtos: ${formatCurrency(calcularTotais(draft).subtotalProdutos)}`,
-    `Subtotal: ${formatCurrency(subtotal)}`
+    `Subtotal: ${formatCurrency(subtotal)}`,
   );
 
   if (desconto > 0) {
@@ -230,7 +237,7 @@ export function buildWhatsAppMessage(draft: DocumentoDraft): string {
     ``,
     `—`,
     `Shellton Auto Mecânica`,
-    `_Documento informativo. Não substitui nota fiscal._`
+    `_Documento informativo. Não substitui nota fiscal._`,
   );
 
   return lines.join("\n");

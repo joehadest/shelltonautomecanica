@@ -67,8 +67,8 @@ export const ADMIN_NAV: AdminNavItem[] = [
   },
   {
     id: "documentos",
-    label: "Orçamentos",
-    shortLabel: "Orçam.",
+    label: "Documentos",
+    shortLabel: "Docs",
     icon: FileText,
     mobilePrimary: true,
   },

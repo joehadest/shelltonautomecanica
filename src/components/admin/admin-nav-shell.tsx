@@ -123,7 +123,7 @@ export function AdminNavShell({
       {/* Conteúdo — único painel com scroll vertical */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
         <div className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:py-8 lg:pb-8 3xl:max-w-[1920px]">
-          <div className="mb-5 min-w-0 sm:mb-6">
+          {tab !== "documentos" && <div className="mb-5 min-w-0 sm:mb-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/80">
               Admin
             </p>
@@ -133,7 +133,7 @@ export function AdminNavShell({
             <p className="mt-1 text-sm text-muted-foreground">
               Controle agendamentos, fila e portfólio em tempo real.
             </p>
-          </div>
+          </div>}
 
           <AnimatePresence mode="wait">
             <motion.div

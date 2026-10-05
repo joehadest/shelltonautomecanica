@@ -51,7 +51,7 @@ export interface FooterConfig {
   updated_at: string;
 }
 
-/** Dados da empresa exibidos no topo dos PDFs de orçamento/recibo. */
+/** Dados da empresa exibidos no topo dos PDFs de documentos da oficina. */
 export interface ConfiguracaoEmpresa {
   id: string;
   razao_social: string;
