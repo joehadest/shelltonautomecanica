@@ -34,6 +34,7 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
       phone: 15,
       placa: 8,
       cnpj: 18,
+      cpfCnpj: 18,
       time: 5,
     };
 

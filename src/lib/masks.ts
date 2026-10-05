@@ -4,6 +4,7 @@ export type MaskKind =
   | "phone"
   | "placa"
   | "cnpj"
+  | "cpfCnpj"
   | "currency"
   | "digits"
   | "time";
@@ -68,6 +69,16 @@ export function maskCnpj(value: string): string {
   return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
 }
 
+/** CPF ou CNPJ, identificado pela quantidade de dígitos. */
+export function maskCpfCnpj(value: string): string {
+  const d = onlyDigits(value).slice(0, 14);
+  if (d.length > 11) return maskCnpj(d);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 /**
  * Moeda BR enquanto digita.
  * Aceita "150,50" ou "150.50" e formata como 150,50.
@@ -121,6 +132,8 @@ export function applyMask(kind: MaskKind, value: string): string {
       return maskPlaca(value);
     case "cnpj":
       return maskCnpj(value);
+    case "cpfCnpj":
+      return maskCpfCnpj(value);
     case "currency":
       return maskCurrency(value);
     case "digits":
@@ -138,6 +151,7 @@ export function maskInputMode(
   switch (kind) {
     case "phone":
     case "cnpj":
+    case "cpfCnpj":
     case "digits":
     case "time":
       return "numeric";

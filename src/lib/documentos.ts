@@ -14,6 +14,7 @@ export interface DocumentoItem {
 export interface DocumentoDraft {
   tipo: DocumentoTipo;
   clienteNome: string;
+  cpfCnpj: string;
   telefone: string;
   modelo: string;
   placa: string;
@@ -77,6 +78,7 @@ export function createEmptyDraft(tipo: DocumentoTipo = "orcamento"): DocumentoDr
   return {
     tipo,
     clienteNome: "",
+    cpfCnpj: "",
     telefone: "",
     modelo: "",
     placa: "",
@@ -94,6 +96,7 @@ export function draftFromAgendamento(a: Agendamento): DocumentoDraft {
   return {
     tipo,
     clienteNome: a.cliente_nome,
+    cpfCnpj: "",
     telefone: maskPhone(a.telefone),
     modelo: a.modelo,
     placa: maskPlaca(a.placa),
