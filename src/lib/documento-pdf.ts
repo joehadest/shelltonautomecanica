@@ -290,20 +290,25 @@ export async function buildDocumentoPdf(
   doc.setTextColor(35, 35, 35);
 
   // Bloco do cliente
+  const clienteLines = [
+    `Nome: ${draft.clienteNome.trim() || "—"}`,
+    ...(draft.cpfCnpj.trim() ? [`CPF/CNPJ: ${draft.cpfCnpj.trim()}`] : []),
+    ...(draft.telefone.trim()
+      ? [`WhatsApp: ${formatPhoneDisplay(draft.telefone)}`]
+      : []),
+  ];
+  const clienteHeight = Math.max(30, 16 + clienteLines.length * 7);
   doc.setFillColor(248, 248, 248);
   doc.setDrawColor(220, 220, 220);
-  doc.roundedRect(margin, y, pageWidth - margin * 2, 30, 2, 2, "FD");
+  doc.roundedRect(margin, y, pageWidth - margin * 2, clienteHeight, 2, 2, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text("DADOS DO CLIENTE", margin + 4, y + 7);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Nome: ${draft.clienteNome.trim() || "—"}`, margin + 4, y + 14);
-  doc.text(
-    `WhatsApp: ${formatPhoneDisplay(draft.telefone)}`,
-    margin + 4,
-    y + 21
-  );
+  clienteLines.forEach((line, index) => {
+    doc.text(line, margin + 4, y + 14 + index * 7);
+  });
   const veiculo = [draft.modelo.trim(), draft.placa.trim().toUpperCase()]
     .filter(Boolean)
     .join(" · ");
@@ -311,7 +316,7 @@ export async function buildDocumentoPdf(
     doc.text(`Veículo: ${veiculo}`, margin + 95, y + 14);
   }
 
-  y += 36;
+  y += clienteHeight + 6;
 
   y = renderItemTable(doc, y, margin, "MÃO DE OBRA", draft.maoDeObra);
   y = renderItemTable(doc, y, margin, "PRODUTOS / PEÇAS", draft.produtos);

@@ -223,10 +223,18 @@ function DocumentPreview({
           <span className="text-foreground">Cliente:</span>{" "}
           {draft.clienteNome || "—"}
         </p>
-        <p>
-          <span className="text-foreground">WhatsApp:</span>{" "}
-          {draft.telefone || "—"}
-        </p>
+        {draft.cpfCnpj.trim() && (
+          <p>
+            <span className="text-foreground">CPF/CNPJ:</span>{" "}
+            {draft.cpfCnpj}
+          </p>
+        )}
+        {draft.telefone.trim() && (
+          <p>
+            <span className="text-foreground">WhatsApp:</span>{" "}
+            {formatPhoneDisplay(draft.telefone)}
+          </p>
+        )}
         {(draft.modelo || draft.placa) && (
           <p>
             <span className="text-foreground">Veículo:</span>{" "}
@@ -616,10 +624,6 @@ export function DocumentosPanel() {
       toast.error("Informe o nome do cliente.");
       return false;
     }
-    if (!normalizeWhatsAppPhone(draft.telefone)) {
-      toast.error("WhatsApp inválido. Verifique o número do cliente.");
-      return false;
-    }
     if (!hasDocumentoItens(draft)) {
       toast.error("Adicione pelo menos um item em mão de obra ou produtos.");
       return false;
@@ -639,6 +643,12 @@ export function DocumentosPanel() {
 
   async function enviarWhatsApp() {
     if (!draft || !validarDraft()) return;
+    if (!normalizeWhatsAppPhone(draft.telefone)) {
+      toast.error(
+        "Informe um WhatsApp válido para enviar. Para gerar o documento sem telefone, use Baixar PDF."
+      );
+      return;
+    }
 
     try {
       const modo = await shareDocumentoPdf(draft, empresa);
@@ -902,7 +912,17 @@ export function DocumentosPanel() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="doc-tel">WhatsApp</Label>
+                        <Label htmlFor="doc-cpf-cnpj">CPF/CNPJ (opcional)</Label>
+                        <MaskedInput
+                          id="doc-cpf-cnpj"
+                          mask="cpfCnpj"
+                          placeholder="CPF ou CNPJ do cliente"
+                          value={draft.cpfCnpj}
+                          onValueChange={(v) => updateDraft("cpfCnpj", v)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="doc-tel">WhatsApp (opcional)</Label>
                         <div className="relative">
                           <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                           <MaskedInput
@@ -915,6 +935,9 @@ export function DocumentosPanel() {
                             onValueChange={(v) => updateDraft("telefone", v)}
                           />
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Necessário apenas para enviar pelo WhatsApp.
+                        </p>
                       </div>
                     </div>
 
@@ -1115,10 +1138,16 @@ export function DocumentosPanel() {
                         </div>
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <p className="text-sm font-semibold leading-snug text-foreground">
-                            Enviar para{" "}
-                            <span className="break-all font-mono text-primary sm:break-normal">
-                              {formatPhoneDisplay(draft.telefone)}
-                            </span>
+                            {draft.telefone.trim() ? (
+                              <>
+                                Enviar para{" "}
+                                <span className="break-all font-mono text-primary sm:break-normal">
+                                  {formatPhoneDisplay(draft.telefone)}
+                                </span>
+                              </>
+                            ) : (
+                              "Baixar documento"
+                            )}
                           </p>
                           <p className="text-xs leading-relaxed text-muted-foreground">
                             Gera um PDF em formato de planilha. No celular,
